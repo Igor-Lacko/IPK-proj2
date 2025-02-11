@@ -19,6 +19,7 @@ public enum MessageType
     PING,
     REPLY,
     NONREPLY, // !REPLY
+    EMPTY,
     UNKNOWN
 }
 

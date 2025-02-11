@@ -9,7 +9,7 @@ namespace src.UDP;
 class UDPClient(CommandLineArguments arguments)
 {
     // Properties
-    public string Hostname { get; } = arguments.hostname;
+    public string Hostname { get; } = arguments.hostname!;
     public ushort Port { get; } = arguments.port;
     public ushort Timeout { get; } = arguments.timeout;
     public byte Retransmissions { get; } = arguments.retransmissions;
