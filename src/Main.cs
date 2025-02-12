@@ -22,7 +22,7 @@ class Program
 
     public static void PrintErrorAndHelp(string message)
     {
-        Console.WriteLine(message);
+        ErrorLogger.ErrorMessage(message);
         PrintHelp(1);
     }
 

@@ -19,7 +19,6 @@ public enum MessageType
     PING,
     REPLY,
     NONREPLY, // !REPLY
-    EMPTY,
     UNKNOWN
 }
 
@@ -36,9 +35,9 @@ public enum MessageType
 /// </summary>
 public struct MessageParams
 {
-    public string? Username;
-    public string? DisplayName;
-    public string? ChannelID;
-    public string? Secret;
-    public string? MessageContent;
+    public string? username;
+    public string? display_name;
+    public string? channel_id;
+    public string? secret;
+    public string? message_content;
 }

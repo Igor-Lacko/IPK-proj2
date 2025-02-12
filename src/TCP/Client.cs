@@ -1,5 +1,6 @@
 /* This file contains the implementation of the main Client class for the TCP variant */
 
+using System.Formats.Asn1;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -10,12 +11,15 @@ using src.TCP;
 class TCPClient
 {
     // Properties
-    public IPAddress DstAddress { get; }                                            // Destination address
-    public ushort DstPort { get; }                                                  // Destination port 
-    private ClientState State { get; set; }                                         // Client state
-    public Socket ClientSocket { get; }                                             // Client socket
-    private TextWriter Writer { get; }                                              // Writer
-    private TextReader Reader { get; }                                              // Reader
+    public IPAddress DstAddress { get; }                                                        // Destination address
+    public ushort DstPort { get; }                                                              // Destination port 
+    private ClientState State { get; set; }                                                     // Client state
+    public Socket ClientSocket { get; }                                                         // Client socket
+    private TextWriter ServerSender { get; }                                                    // Message writer
+    private TextReader ServerReader { get; }                                                    // Message reader
+    private TextReader InputReader { get; } = new StreamReader(Console.OpenStandardInput());    // Input reader                                         
+    private ClientData Data { get; set; } = new();                                              // Current data
+    private NetworkStream Stream { get; }                                                       // Stream
 
     // Constructor
     public TCPClient(CommandLineArguments arguments)
@@ -36,68 +40,74 @@ class TCPClient
         ClientSocket = new(DstAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
         // Connect and create a stream
-        InitiateConnection();
-        NetworkStream stream = new(ClientSocket);
+        try
+        {
+            ClientSocket.Connect(new IPEndPoint(DstAddress, DstPort));
+        }
+
+        catch(Exception e)
+        {
+            ErrorLogger.ErrorMessage($"Failed to connect to the server: {e.Message}");
+            Environment.Exit(1);
+        }
+
+        Stream = new(ClientSocket);
 
         // Reader/writer
-        Writer = new StreamWriter(stream);
-        Reader = new StreamReader(stream);
+        ServerSender = new StreamWriter(Stream);
+        ServerReader = new StreamReader(Stream);
     }
 
-    // Public methods
+    // Methods
     public async Task RunAsync()
     {
+        // Add CTRL + C handler
+        Console.CancelKeyPress += delegate
+        {
+            TCPMessenger.SendByeMessage(ServerSender, Data);
+            State = ClientState.END;
+        };
+
+        // Main loop
         do
         {
-
-        } while (State != ClientState.END);
-    }
-
-    // Private methods
-
-
-    private void InitiateConnection()
-    {
-        // Server endpoint
-        IPEndPoint server = new(DstAddress, DstPort);
-        ClientSocket.Connect(server);
-    }
-
-    /* Async server input/user input handlers */
-    private async Task<TCPMessage> ReadMessage()
-    {
-        // Read and return the message
-        string? message = await Reader.ReadLineAsync();
-        return new TCPMessage(message);
-    }
-
-    private static async Task<TCPCommand> GetUserInput()
-    {
-        // Get user input
-        string? command = await Console.In.ReadLineAsync();
-        return new TCPCommand(command);
-    }
-
-    /* State handlers */
-    private async Task StartState()
-    {
-        // Get the user/server input (whatrver comes first)
-        Task<TCPCommand> input_task = GetUserInput();
-        Task<TCPMessage> server_task = ReadMessage();
-
-        // Wait for either to finish
-        Task action = await Task.WhenAny(input_task, server_task);
-
-        // Got a command from the user. Represents the AUTH/BYE transitions
-        if(action == input_task)
-        {
-            TCPCommand command = await input_task;
-            switch(command.Type)
+            switch(State)
             {
-                default:
-                    throw new NotImplementedException("Invalid command (yet to be implemented)");
+                case ClientState.START:
+                    await StartAsync();
+                    break;
+
+                case ClientState.AUTH:
+                    //AuthState();
+                    break;
+
+                case ClientState.OPEN:
+                    //OpenState();
+                    break;
+
+                case ClientState.JOIN:
+                    //JoinState();
+                    break;
             }
-        }
+        } while(State != ClientState.END);
+
+        GracefulExit();
     }
 
+    private void GracefulExit()
+    {
+        ClientSocket.Shutdown(SocketShutdown.Both);
+        ClientSocket.Close();
+        Environment.Exit(0);
+    }
+
+    private async Task StartAsync()
+    {
+
+        var user_input = Console.In.ReadLineAsync();
+        var server_response = ServerReader.ReadLineAsync();
+        Task first_task = await Task.WhenAny(user_input, server_response);
+
+        Console.WriteLine(first_task == user_input ? "User input" : "Server response");
+    }
 }
