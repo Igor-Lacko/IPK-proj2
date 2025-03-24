@@ -21,4 +21,4 @@ run:
 	dotnet run --project $(PROJECT)
 
 clean:
-	rm -f $(EXECUTABLE) *.pdb && cd src && rm -rf bin obj
+	rm -f $(EXECUTABLE) && cd src && rm -rf bin obj
