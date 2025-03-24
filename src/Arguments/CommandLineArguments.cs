@@ -5,13 +5,35 @@ namespace src.Arguments;
 using System.Net;
 using System.Net.Sockets;
 
+/// <summary>
+/// Structure representing an instance of CLI arguments.
+/// </summary>
 public struct CommandLineArguments
 {
-    public ProtocolType? Protocol;              // TCP/UDP
-    public IPAddress? Address;                  // Server IP address
-    public ushort? Port;                        // Server port
-    public ushort? Timeout;                     // UDP confirmation timeout in milliseconds
-    public byte? Retransmissions;               // Max number of UDP retransmissions
+    /// <summary>
+    /// TCP/UDP protocol type.
+    /// </summary>
+    public ProtocolType? Protocol;
+
+    /// <summary>
+    /// Server IP address.
+    /// </summary>
+    public IPAddress? Address;
+
+    /// <summary>
+    /// Server port.
+    /// </summary>
+    public ushort? Port;
+
+    /// <summary>
+    /// UDP confirmation timeout in milliseconds.
+    /// </summary>
+    public ushort? Timeout;
+
+    /// <summary>
+    /// Max number of UDP retransmissions.
+    /// </summary>
+    public byte? Retransmissions;
 
     /// <summary>
     /// Constructor. Sets all fields to null.

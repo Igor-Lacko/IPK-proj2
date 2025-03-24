@@ -5,6 +5,9 @@ using System.Net.Sockets;
 
 namespace src.Arguments;
 
+/// <summary>
+/// Contains methods for parsing and filling the CommandLineArguments struct.
+/// </summary>
 public static class CommandLineArgumentParser
 {
     /// <summary>
