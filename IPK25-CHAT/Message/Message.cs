@@ -14,7 +14,12 @@ public abstract class Message(MessageType type) : IReadable
     /// <summary>
     /// Message type.
     /// </summary>
-    public MessageType Type { get; } = type;
+    public readonly MessageType Type = type;
+
+    /// <summary>
+    /// ID of the message. UDP specific, so it is nullable.
+    /// </summary>
+    protected ushort? MessageID;
 
     /// <summary>
     /// Checks if the message is valid in the current client state.
@@ -49,5 +54,11 @@ public abstract class Message(MessageType type) : IReadable
     /// Converts the message to a byte array.
     /// </summary>
     /// <returns>Byte array representing the message.</returns>
-    public abstract byte[] ToBytes();
+    public abstract byte[] AsBytes();
+
+    /// <summary>
+    /// Converts the message to a string.
+    /// </summary>
+    /// <returns>String representing the message.</returns>
+    public abstract string AsString();
 }
