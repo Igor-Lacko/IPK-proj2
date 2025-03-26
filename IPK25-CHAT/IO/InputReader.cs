@@ -4,8 +4,8 @@ namespace IPK_25_CHAT.IO;
 
 using System.Collections.Concurrent;
 using System.Net.Sockets;
-using IPK_25_CHAT.Client;
-using IPK_25_CHAT.Error;
+using IPK_25_CHAT.Command;
+using IPK_25_CHAT.Message;
 using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Enum;
 
@@ -65,27 +65,31 @@ public class InputReader
     /// <summary>
     /// Closes the input reader.
     /// </summary>
-    public void Close()
-    {
-        UserInputCancellationToken.Cancel();
-    }
+    public void Close() => UserInputCancellationToken.Cancel();
 
+    /// <summary>
+    /// Called after receiving user input. Parses the input and enqueues it.
+    /// </summary>
+    /// <param name="input">String representing the input.</param>
     private void OnUserInputReceived(string input)
     {
+        // Valid command
         if(Command.Parse(input, out Command command))
         {
             UserInputQueue.Enqueue(command);
             QueueSemaphore.Release();
         }
 
+        // Invalid command
         else if(input.StartsWith('/'))
-            ErrorLogger.Warning("Invalid command!");
+            Console.WriteLine($"ERROR: {input}");
 
-        else UserInputQueue.Enqueue(new Message(MessageType.Message, input));
+        // Message to send to the server
+        else throw new NotImplementedException();
     }
 
     public void Run()
     {
-        Task.Run(() => ReadUserInput());
+        throw new NotImplementedException();
     }
 }

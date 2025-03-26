@@ -1,6 +1,6 @@
 /* Contains the base class for a client command */
 
-namespace IPK_25_CHAT.Client;
+namespace IPK_25_CHAT.Command;
 
 using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Enum;
@@ -9,24 +9,12 @@ using IPK_25_CHAT.Enum;
 /// Base class for a client command.
 /// </summary>
 /// <param name="type">Command type.</param>
-/// <param name="command">Command as a string.</param>
-public abstract class Command(CommandType type, string command) : IReadable
+public abstract class Command(CommandType type) : IReadable
 {
     /// <summary>
     /// Command type.
     /// </summary>
     public CommandType Type { get; } = type;
-
-    /// <summary>
-    /// Command as a string.
-    /// </summary>
-    protected string CommandAsString { get; } = command;
-
-    /// <summary>
-    /// Returns the string representation of the command.
-    /// </summary>
-    /// <returns>String representation of the command.</returns>
-    public string AsString() => CommandAsString;
 
     /// <summary>
     /// Checks if the command is valid in the current client state.

@@ -10,12 +10,6 @@ using IPK_25_CHAT.Enum;
 public interface IReadable
 {
     /// <summary>
-    /// Converts the input to a string.
-    /// </summary>
-    /// <returns>String representation of the input.</returns>
-    public string AsString();
-
-    /// <summary>
     /// Checks if the input is valid in the current client state.
     /// </summary>
     /// <param name="clientState">Current state of the client.</param>
