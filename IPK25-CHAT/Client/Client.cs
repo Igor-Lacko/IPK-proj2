@@ -1,10 +1,10 @@
 /* Contains an abstract class for a client. */
 
-namespace src.Client;
+namespace IPK_25_CHAT.Client;
 
 using System.Net;
 using System.Net.Sockets;
-using src.Enum;
+using IPK_25_CHAT.Enum;
 
 /// <summary>
 /// Abstract base class representing a client instance.

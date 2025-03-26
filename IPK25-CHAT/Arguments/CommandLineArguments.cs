@@ -1,6 +1,6 @@
 /* Implementation of a structure representing one instance of CLI arguments. */
 
-namespace src.Arguments;
+namespace IPK_25_CHAT.Arguments;
 
 using System.Net;
 using System.Net.Sockets;

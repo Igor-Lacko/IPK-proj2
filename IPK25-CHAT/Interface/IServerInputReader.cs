@@ -1,8 +1,8 @@
 /* Contains the common interface for classes that asynchronously wait for server input */
 
-namespace src.Interface;
+namespace IPK_25_CHAT.Interface;
 
-using src.Client;
+using IPK_25_CHAT.Client;
 
 /// <summary>
 /// Interface for classes that asynchronously wait for server input.

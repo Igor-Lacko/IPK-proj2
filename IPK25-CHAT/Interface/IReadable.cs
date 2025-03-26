@@ -1,8 +1,8 @@
 /* Common interface for readable inputs from either the server (messages) or user (messages/commands) */
 
-namespace src.Interface;
+namespace IPK_25_CHAT.Interface;
 
-using src.Enum;
+using IPK_25_CHAT.Enum;
 
 /// <summary>
 /// Interface for readable inputs (messages/commands) from either the server or user.

@@ -5,7 +5,7 @@
 EXECUTABLE=ipk25chat-client
 
 # .csproj file
-PROJECT=src/src.csproj
+PROJECT=IPK25-CHAT/IPK_25_CHAT.csproj
 
 .PHONY: all run build clean
 

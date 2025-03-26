@@ -1,6 +1,6 @@
 /* Contains a common interface for classes that send messages to server. */
 
-namespace src.Interface;
+namespace IPK_25_CHAT.Interface;
 
 /// <summary>
 /// Interface for classes that send messages to the server.

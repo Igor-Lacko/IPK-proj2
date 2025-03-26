@@ -3,7 +3,7 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace src.Arguments;
+namespace IPK_25_CHAT.Arguments;
 
 /// <summary>
 /// Contains methods for parsing and filling the CommandLineArguments struct.

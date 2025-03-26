@@ -1,9 +1,9 @@
 /* Contains the base class for a message */
 
-namespace src.Client;
+namespace IPK_25_CHAT.Client;
 
-using src.Enum;
-using src.Interface;
+using IPK_25_CHAT.Enum;
+using IPK_25_CHAT.Interface;
 
 /// <summary>
 /// Base class for a message.
@@ -34,4 +34,15 @@ public abstract class Message(MessageType type, string message) : IReadable
     /// <param name="clientState">Current state of the client.</param>
     /// <returns>True if the message is valid, else false.</returns>
     public abstract bool IsValid(State clientState);
+
+    /// <summary>
+    /// Parses the message string into a message object.
+    /// </summary>
+    /// <param name="message">Message string.</param>
+    /// <param name="result">Variable to store the result, if parsed successfully..</param>
+    /// <returns>True if parsed successfully, else it returns False.</returns>
+    public static bool Parse(string message, out Message result)
+    {
+        throw new NotImplementedException();
+    }
 }

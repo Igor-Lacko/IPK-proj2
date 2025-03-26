@@ -1,6 +1,6 @@
 /* Contains an enumeration of message types. */
 
-namespace src.Enum;
+namespace IPK_25_CHAT.Enum;
 
 /// <summary>
 /// Enumeration of message types.

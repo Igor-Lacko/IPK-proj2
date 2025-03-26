@@ -1,6 +1,6 @@
 /* Contains an enumeration of client states. */
 
-namespace src.Enum;
+namespace IPK_25_CHAT.Enum;
 
 /// <summary>
 /// Enumeration of client states.
