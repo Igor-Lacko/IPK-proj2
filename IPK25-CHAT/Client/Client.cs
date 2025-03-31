@@ -60,9 +60,9 @@ public abstract class Client
     private readonly UserInputReader UserInputReader = new();
 
     /// <summary>
-    /// Throws events subscribed to by the client on receiving server input.
+    /// Reads input from the server and sends messages to the server.
     /// </summary>
-    private readonly IServerInputReader ServerInputReader;
+    private readonly IServerCommunicator ServerCommunicator;
 
     /// <summary>
     /// Queue of user inputs.
@@ -89,15 +89,14 @@ public abstract class Client
         // Instance attributes
         Host = host;
         Port = port;
-        ServerInputReader = CreateServerInputReader();
-        ServerOutputWriter = CreateServerOutputWriter();
+        ServerCommunicator = CreateServerCommunicator();
         ClientSocket = CreateSocket();
         InputValidator = new UserInputValidator(this);
 
         // Subscribe to events
         UserInputReader.UserInputReceived += OnUserInputReceived;
-        ServerInputReader.ErrMessageReceived += OnErrMessageReceived;
-        ServerInputReader.ByeMessageReceived += OnByeMessageReceived;
+        ServerCommunicator.ErrMessageReceived += OnErrMessageReceived;
+        ServerCommunicator.ByeMessageReceived += OnByeMessageReceived;
     }
 
     /// <summary>
@@ -106,11 +105,6 @@ public abstract class Client
     /// </summary>
     /// <param name="input">The given input from the user.</param>
     private void OnUserInputReceived(string input) => InputQueue.Enqueue(input);
-
-    /// <summary>
-    /// Used to send messages to the server.
-    /// </summary>
-    private IServerOutputWriter ServerOutputWriter;
 
     /// <summary>
     /// Client reaction to receiving a ERR message from the server.
@@ -256,8 +250,7 @@ public abstract class Client
     /// </summary>
     private void EndState()
     {
-        ServerInputReader.Close();
-        ServerOutputWriter.Close();
+        ServerCommunicator.Close();
         UserInputReader.Close();
         Environment.Exit(0);
     }
@@ -269,12 +262,8 @@ public abstract class Client
     protected abstract Socket CreateSocket();
 
     /// <summary>
-    /// Creates the server input reader for the given type of the Client (TCP/UDP).
+    /// Creates the protocol-specific server communicator.
     /// </summary>
-    protected abstract IServerInputReader CreateServerInputReader();
-
-    /// <summary>
-    /// Creates the server output writer for the given type of the Client (TCP/UDP).
-    /// </summary>
-    protected abstract IServerOutputWriter CreateServerOutputWriter();
+    /// <returns>Server communicator object.</returns>
+    protected abstract IServerCommunicator CreateServerCommunicator();
 }
