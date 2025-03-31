@@ -14,9 +14,9 @@ public class ConfirmMessage : Message
     /// Constructor for the CONFIRM message.
     /// </summary>
     /// <param name="MessageID">Message ID as a ushort.</param>
-    public ConfirmMessage(ushort MessageID) : base(MessageType.CONFIRM)
+    public ConfirmMessage(ushort messageID) : base(MessageType.CONFIRM)
     {
-        this.MessageID = MessageID;
+        MessageID = messageID;
     }
 
     /// <summary>
@@ -40,5 +40,5 @@ public class ConfirmMessage : Message
     /// </summary>
     /// <returns>Throws an exception.</returns>
     /// <exception cref="ArgumentException">Thrown when the method is called.</exception>
-    public override string AsString() => throw new ArgumentException("CONFIRM message is not used in textual form.");
+    public override string ToString() => throw new ArgumentException("CONFIRM message is not used in textual form.");
 }

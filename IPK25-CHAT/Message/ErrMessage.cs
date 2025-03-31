@@ -12,12 +12,12 @@ public class ErrMessage : Message
     /// <summary>
     /// Error message.
     /// </summary>
-    private string DisplayName;
+    private readonly string DisplayName;
 
     /// <summary>
     /// Content of the error message.
     /// </summary>
-    private string MessageContent;
+    private readonly string MessageContent;
 
     /// <summary>
     /// Textual protocol constructor for ERR message.
@@ -64,5 +64,5 @@ public class ErrMessage : Message
     /// Converts the message to a string.
     /// </summary>
     /// <returns>String representing the message.</returns>
-    public override string AsString() => $"ERR FROM {DisplayName} IS {MessageContent}\r\n";
+    public override string ToString() => $"ERR FROM {DisplayName} IS {MessageContent}\r\n";
 }

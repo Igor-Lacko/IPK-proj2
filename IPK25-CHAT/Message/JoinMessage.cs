@@ -12,12 +12,12 @@ public class JoinMessage : Message
     /// <summary>
     /// Display name of the user.
     /// </summary>
-    private string DisplayName;
+    private readonly string DisplayName;
 
     /// <summary>
     /// Id of the chat channel to be joined.
     /// </summary>
-    private string ChannelID;
+    private readonly string ChannelID;
 
     /// <summary>
     /// Textual protocol constructor for JOIN message.
@@ -64,5 +64,5 @@ public class JoinMessage : Message
     /// Converts the message to a string.
     /// </summary>
     /// <returns>String representing the message.</returns>
-    public override string AsString() => $"JOIN {ChannelID} AS {DisplayName}\r\n";
+    public override string ToString() => $"JOIN {ChannelID} AS {DisplayName}\r\n";
 }

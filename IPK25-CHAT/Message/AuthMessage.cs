@@ -12,17 +12,17 @@ public class AuthMessage : Message
     /// <summary>
     /// Username of the user.
     /// </summary>
-    private string Username;
+    private readonly string Username;
 
     /// <summary>
     /// Password of the user.
     /// </summary>
-    private string Secret;
+    private readonly string Secret;
 
     /// <summary>
     /// User's displayed name.
     /// </summary>
-    private string DisplayName;
+    private readonly string DisplayName;
 
     /// <summary>
     /// Textual protocol constructor for the AUTH message.
@@ -72,5 +72,5 @@ public class AuthMessage : Message
     /// Converts the message to a string.
     /// </summary>
     /// <returns>String representing the message.</returns>
-    public override string AsString() => $"AUTH {Username} AS {DisplayName} USING {Secret}\r\n";
+    public override string ToString() => $"AUTH {Username} AS {DisplayName} USING {Secret}\r\n";
 }

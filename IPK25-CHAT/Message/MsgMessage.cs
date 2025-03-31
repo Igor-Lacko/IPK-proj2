@@ -12,12 +12,12 @@ public class MsgMessage : Message
     /// <summary>
     /// Display name of the user.
     /// </summary>
-    private string DisplayName;
+    private readonly string DisplayName;
 
     /// <summary>
     /// Content of the message.
     /// </summary>
-    private string MessageContent;
+    private readonly string MessageContent;
 
     /// <summary>
     /// Textual protocol constructor for MSG message.
@@ -64,5 +64,5 @@ public class MsgMessage : Message
     /// Converts the message to a string.
     /// </summary>
     /// <returns>String representing the message.</returns>
-    public override string AsString() => $"MSG FROM {DisplayName} IS {MessageContent}\r\n";
+    public override string ToString() => $"MSG FROM {DisplayName} IS {MessageContent}\r\n";
 }

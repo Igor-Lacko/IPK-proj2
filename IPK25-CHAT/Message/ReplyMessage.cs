@@ -12,12 +12,12 @@ public class ReplyMessage : Message
     /// <summary>
     /// If this is true, it indicates that the message is a positive reply, negative otherwise.
     /// </summary>
-    private bool OK;
+    private readonly bool OK;
 
     /// <summary>
     /// Content of the reply message.
     /// </summary>
-    private string MessageContent;
+    private readonly string MessageContent;
 
     /// <summary>
     /// Textual protocol constructor for REPLY message.
@@ -64,5 +64,5 @@ public class ReplyMessage : Message
     /// Converts the message to a string.
     /// </summary>
     /// <returns>String representing the message.</returns>
-    public override string AsString() => $"REPLY {(OK ? "OK" : "NOK")} IS {MessageContent}\r\n";
+    public override string ToString() => $"REPLY {(OK ? "OK" : "NOK")} IS {MessageContent}\r\n";
 }

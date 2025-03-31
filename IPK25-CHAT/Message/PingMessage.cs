@@ -13,9 +13,9 @@ public class PingMessage : Message
     /// Constructor for the PING message.
     /// </summary>
     /// <param name="MessageID">Message ID as a ushort.</param>
-    public PingMessage(ushort MessageID) : base(MessageType.PING)
+    public PingMessage(ushort messageID) : base(MessageType.PING)
     {
-        this.MessageID = MessageID;
+        MessageID = messageID;
     }
 
     /// <summary>
@@ -37,5 +37,5 @@ public class PingMessage : Message
     /// </summary>
     /// <returns>Throws an exception.</returns>
     /// <exception cref="ArgumentException">Thrown when the method is called.</exception>
-    public override string AsString() => throw new ArgumentException("PING message is not used in textual form.");
+    public override string ToString() => throw new ArgumentException("PING message is not used in textual form.");
 }

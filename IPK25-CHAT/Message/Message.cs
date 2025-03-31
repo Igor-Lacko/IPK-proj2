@@ -55,10 +55,4 @@ public abstract class Message(MessageType type) : IReadable
     /// </summary>
     /// <returns>Byte array representing the message.</returns>
     public abstract byte[] AsBytes();
-
-    /// <summary>
-    /// Converts the message to a string.
-    /// </summary>
-    /// <returns>String representing the message.</returns>
-    public abstract string AsString();
 }

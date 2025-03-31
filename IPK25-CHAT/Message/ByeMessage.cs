@@ -12,7 +12,7 @@ public class ByeMessage : Message
     /// <summary>
     /// Display name of the user.
     /// </summary>
-    private string DisplayName;
+    private readonly string DisplayName;
 
     /// <summary>
     /// Textual protocol constructor for BYE message.
@@ -56,5 +56,5 @@ public class ByeMessage : Message
     /// Converts the message to a string.
     /// </summary>
     /// <returns>String representing the message.</returns>
-    public override string AsString() => $"BYE FROM {DisplayName}\r\n";
+    public override string ToString() => $"BYE FROM {DisplayName}\r\n";
 }
