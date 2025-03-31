@@ -53,20 +53,20 @@ class UserInputValidator
                 return command;
 
             // Print a error message to the user
-            Console.WriteLine($"ERROR: {command}");
+            StdoutResultWriter.InternalClientError($"ERROR: {command}");
         }
 
         // Try to look for an invalid command
         else if(input.StartsWith('/'))
         {
-            Console.WriteLine($"ERROR: {input}");
+            StdoutResultWriter.InternalClientError($"ERROR: {input}");
             return null;
         }
 
         // Consider the input as a message
         if(Config.DisplayName == null)
         {
-            Console.WriteLine($"ERROR: {input}");
+            StdoutResultWriter.InternalClientError($"ERROR: {input}");
             return null;
         }
 
@@ -74,7 +74,7 @@ class UserInputValidator
         MsgMessage msg = new(Config.DisplayName, input);
         if(!msg.IsValid(ClientState))
         {
-            Console.WriteLine($"ERROR: {input}");
+            StdoutResultWriter.InternalClientError($"ERROR: {input}");
             return null;
         }
 
