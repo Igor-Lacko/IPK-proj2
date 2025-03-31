@@ -4,7 +4,7 @@ namespace IPK_25_CHAT.Command;
 
 using IPK_25_CHAT.Enum;
 
-class RenameCommand(string displayName) : Command(CommandType.RENAME, $"/rename {displayName}")
+public class RenameCommand(string displayName) : Command(CommandType.RENAME, $"/rename {displayName}")
 {
     /// <summary>
     /// Regular expression for the RENAME command.
@@ -14,7 +14,7 @@ class RenameCommand(string displayName) : Command(CommandType.RENAME, $"/rename 
     /// <summary>
     /// User's new displayed name.
     /// </summary>
-    private readonly string DisplayName = displayName;
+    public readonly string DisplayName = displayName;
 
     /// <summary>
     /// Validates the rename command. Is valid if the user has a set display name.

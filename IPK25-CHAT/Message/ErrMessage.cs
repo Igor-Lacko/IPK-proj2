@@ -12,12 +12,12 @@ public class ErrMessage : Message
     /// <summary>
     /// Error message.
     /// </summary>
-    private readonly string DisplayName;
+    public readonly string DisplayName;
 
     /// <summary>
     /// Content of the error message.
     /// </summary>
-    private readonly string MessageContent;
+    public readonly string MessageContent;
 
     /// <summary>
     /// Textual protocol constructor for ERR message.

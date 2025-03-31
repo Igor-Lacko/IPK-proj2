@@ -2,6 +2,7 @@
 
 namespace IPK_25_CHAT.Message;
 
+using IPK_25_CHAT.Command;
 using IPK_25_CHAT.Enum;
 
 /// <summary>
@@ -27,15 +28,13 @@ public class AuthMessage : Message
     /// <summary>
     /// Textual protocol constructor for the AUTH message.
     /// </summary>
-    /// <param name="username">Username of the user as a string.</param>
-    /// <param name="secret">Password of the user as a string.</param>
-    /// <param name="displayName">User's displayed name as a string.</param>
-    public AuthMessage(string username, string secret, string displayName) : base(MessageType.AUTH)
+    /// <param name="command">Command containing the username, password, and display name.</param>
+    public AuthMessage(AuthCommand command) : base(MessageType.AUTH)
     {
         MessageID = null;
-        Username = username;
-        Secret = secret;
-        DisplayName = displayName;
+        Username = command.Username;
+        Secret = command.Secret;
+        DisplayName = command.DisplayName;
     }
 
     /// <summary>

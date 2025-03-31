@@ -12,12 +12,12 @@ public class ReplyMessage : Message
     /// <summary>
     /// If this is true, it indicates that the message is a positive reply, negative otherwise.
     /// </summary>
-    private readonly bool OK;
+    public readonly bool OK;
 
     /// <summary>
     /// Content of the reply message.
     /// </summary>
-    private readonly string MessageContent;
+    public readonly string MessageContent;
 
     /// <summary>
     /// Textual protocol constructor for REPLY message.

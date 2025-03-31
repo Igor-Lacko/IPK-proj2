@@ -12,12 +12,12 @@ public class MsgMessage : Message
     /// <summary>
     /// Display name of the user.
     /// </summary>
-    private readonly string DisplayName;
+    public readonly string DisplayName;
 
     /// <summary>
     /// Content of the message.
     /// </summary>
-    private readonly string MessageContent;
+    public readonly string MessageContent;
 
     /// <summary>
     /// Textual protocol constructor for MSG message.

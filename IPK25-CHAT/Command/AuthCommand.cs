@@ -16,17 +16,17 @@ public class AuthCommand(string username, string secret, string displayName) : C
     /// <summary>
     /// Username of the, well, user.
     /// </summary>
-    private readonly string Username = username;
+    public readonly string Username = username;
 
     /// <summary>
     /// Used for authentication.
     /// </summary>
-    private readonly string Secret = secret;
+    public readonly string Secret = secret;
 
     /// <summary>
     /// Display name of the user.
     /// </summary>
-    private readonly string DisplayName = displayName;
+    public readonly string DisplayName = displayName;
 
     /// <summary>
     /// Validates the auth command. Is only valid in the START state. (TODO? Might also AUTH)
