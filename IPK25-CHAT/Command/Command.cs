@@ -17,6 +17,17 @@ public abstract class Command(CommandType type) : IReadable
     public CommandType Type { get; } = type;
 
     /// <summary>
+    /// Command as a string (for errors).
+    /// </summary>
+    private string TextualRepresentation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Override of ToString. Returns this.AsString.
+    /// </summary>
+    /// <returns>String representation of the command.</returns>
+    public override string ToString() => TextualRepresentation;
+
+    /// <summary>
     /// Checks if the command is valid in the current client state.
     /// </summary>
     /// <param name="clientState">Current state of the client.</param>
