@@ -9,17 +9,18 @@ using IPK_25_CHAT.Enum;
 /// Base class for a client command.
 /// </summary>
 /// <param name="type">Command type.</param>
-public abstract class Command(CommandType type) : IReadable
+/// <param name="textualRepresentation">Command as a string (for errors).</param>
+public abstract class Command(CommandType type, string textualRepresentation) : IReadable
 {
     /// <summary>
     /// Command type.
     /// </summary>
-    public CommandType Type { get; } = type;
+    public readonly CommandType Type = type;
 
     /// <summary>
     /// Command as a string (for errors).
     /// </summary>
-    private string TextualRepresentation { get; set; } = string.Empty;
+    private readonly string TextualRepresentation = textualRepresentation;
 
     /// <summary>
     /// Override of ToString. Returns this.AsString.
@@ -40,8 +41,16 @@ public abstract class Command(CommandType type) : IReadable
     /// <param name="command"String to parse.</param>
     /// <param name="result">Variable to store the result if successful.</param>
     /// <returns>True if parsed successfully, else False.</returns>
-    public static bool Parse(string command, out Command result)
+    public static bool Parse(string command, out Command? result)
     {
+        // Check for the prefix first
+        if(!command.StartsWith('/'))
+        {
+            result = null;
+            return false;
+        }
+
+        // Try to match the individual commands
         throw new NotImplementedException();
     }
 }

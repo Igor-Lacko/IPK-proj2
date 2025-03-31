@@ -46,10 +46,10 @@ class UserInputValidator
             input = input[..60000];
 
         // Try to parse as a command first
-        if(Command.Parse(input, out Command command))
+        if(Command.Parse(input, out Command? command))
         {
             // Validate the command
-            if(command.IsValid(ClientState))
+            if(command!.IsValid(ClientState))
                 return command;
 
             // Print a error message to the user
