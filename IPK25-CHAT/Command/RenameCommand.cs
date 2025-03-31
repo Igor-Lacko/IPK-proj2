@@ -9,7 +9,7 @@ class RenameCommand(string displayName) : Command(CommandType.RENAME, $"/rename 
     /// <summary>
     /// Regular expression for the RENAME command.
     /// </summary>
-    public static string Format = @$"^/rename\s+{ParameterFormats.DISPLAY_NAME}$";
+    public const string Format = @$"^/rename\s+{ParameterFormats.DISPLAY_NAME}$";
 
     /// <summary>
     /// User's new displayed name.
@@ -23,5 +23,4 @@ class RenameCommand(string displayName) : Command(CommandType.RENAME, $"/rename 
     /// <param name="clientState">Current state of the client.</param>
     /// <returns>True if the command is valid, else false.</returns>
     public override bool IsValid(State clientState) => !(clientState == State.AUTH || clientState == State.START);
-    
 }

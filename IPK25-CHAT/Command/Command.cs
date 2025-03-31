@@ -4,6 +4,7 @@ namespace IPK_25_CHAT.Command;
 
 using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Enum;
+using System.Text.RegularExpressions;
 
 /// <summary>
 /// Base class for a client command.
@@ -51,6 +52,35 @@ public abstract class Command(CommandType type, string textualRepresentation) : 
         }
 
         // Try to match the individual commands
-        throw new NotImplementedException();
+        switch (command)
+        {
+            // /auth { Username } { Secret } { DisplayName }
+            case var _ when Regex.IsMatch(command, AuthCommand.Format):
+                string[] auth_split = Regex.Split(command, @"\s+");
+                result = new AuthCommand(auth_split[1], auth_split[2], auth_split[3]);
+                return true;
+
+            // /rename { DisplayName }
+            case var _ when Regex.IsMatch(command, RenameCommand.Format):
+                string[] rename_split = Regex.Split(command, @"\s+");
+                result = new RenameCommand(rename_split[1]);
+                return true;
+
+            // /join { ChannelID }
+            case var _ when Regex.IsMatch(command, JoinCommand.Format):
+                string[] join_split = Regex.Split(command, @"\s+");
+                result = new JoinCommand(join_split[1]);
+                return true;
+
+            // /help
+            case var _ when Regex.IsMatch(command, HelpCommand.Format):
+                result = new HelpCommand();
+                return true;
+
+            // Default case
+            default:
+                result = null;
+                return false;
+        }
     }
 }
