@@ -111,6 +111,7 @@ public abstract class Client
     /// </summary>
     private void OnEofReceived()
     {
+        bool SendBye = ClientState != State.END && ClientState != State.START;
         GracefulTermination();
         Environment.Exit(0);
     }
@@ -184,7 +185,7 @@ public abstract class Client
     /// Main method. Runs the client. Is implemented as a async do-while loop which
     /// handles the current state.
     /// </summary>
-    private async Task Run()
+    public async Task Run()
     {
         InputReader.Run();
         do
@@ -219,7 +220,8 @@ public abstract class Client
     {
         // Tasks for user/server input
         Task<string> userInputTask = UserInputQueue.Dequeue();
-        Task<Message?> serverInputTask = ServerCommunicator.ReadInput();
+        CancellationTokenSource serverInputCancellationTokenSource = new();
+        Task<Message?> serverInputTask = Task.Run(() => ServerCommunicator.ReadInput(serverInputCancellationTokenSource));
 
         // Wait for either task to finish
         Task finishedTask = await Task.WhenAny(userInputTask, serverInputTask);
@@ -229,6 +231,7 @@ public abstract class Client
         {
             // Get the user input
             IReadable? input = InputValidator.Validate(userInputTask.Result);
+            serverInputCancellationTokenSource.Cancel();
             if(input == null) return;
             else RunUserInput(input);
         }

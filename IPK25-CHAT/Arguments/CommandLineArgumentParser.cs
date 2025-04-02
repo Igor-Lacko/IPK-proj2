@@ -83,10 +83,10 @@ public static class CommandLineArgumentParser
                     string protocol = args[++i];
 
                     // TCP
-                    if(protocol == "TCP") arguments.Protocol = ProtocolType.Tcp;
+                    if(protocol == "tcp" || protocol == "TCP") arguments.Protocol = ProtocolType.Tcp;
 
                     // UDP
-                    else if(protocol == "UDP") arguments.Protocol = ProtocolType.Udp;
+                    else if(protocol == "UDP" || protocol == "UDP") arguments.Protocol = ProtocolType.Udp;
 
                     // Invalid protocol
                     else

@@ -23,8 +23,9 @@ public interface IServerCommunicator
     /// <summary>
     /// Reads input from the server.
     /// </summary>
+    /// <param name="cts">Cancellation token source.</param>
     /// <returns>A Message object representing server input.</returns>
-    public Task<Message?> ReadInput();
+    public Task<Message?> ReadInput(CancellationTokenSource cts);
 
     /// <summary>
     /// Reads input from the server in a loop.

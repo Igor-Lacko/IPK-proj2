@@ -75,7 +75,8 @@ public class TCPClient : Client
     {
         // Tasks for user/server input
         Task<string> userInputTask = UserInputQueue.Dequeue();
-        Task<Message?> serverInputTask = ServerCommunicator.ReadInput();
+        CancellationTokenSource cts = new();
+        Task<Message?> serverInputTask = ServerCommunicator.ReadInput(cts);
 
         // Wait for the first task to complete
         Task completedTask = await Task.WhenAny(userInputTask, serverInputTask);

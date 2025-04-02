@@ -31,6 +31,7 @@ public class UserInputValidator
     /// <returns>A IReadable object representing the given input.</returns>
     public IReadable? Validate(string input)
     {
+        Console.WriteLine($"Validating input: {input}");
         // Truncate the message to 60000 characters
         if(input.Length > 60000)
             input = input[..60000];

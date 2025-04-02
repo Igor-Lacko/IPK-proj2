@@ -51,7 +51,20 @@ public class TCPServerCommunicator : IServerCommunicator
     public TCPServerCommunicator(IPAddress host, ushort port)
     {
         TCPSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        TCPSocket.Connect(host, port);
+
+        // Try to connect
+        try
+        {
+            TCPSocket.Connect(host, port);
+        }
+
+        catch (SocketException e)
+        {
+            Console.WriteLine($"ERROR: Connection unsuccessful: {e.Message}");
+            Environment.Exit(1);
+        }
+
+        // Initialize the stream
         TCPStream = new(TCPSocket);
         TCPReader = new(TCPStream);
         TCPWriter = new(TCPStream);
@@ -61,22 +74,35 @@ public class TCPServerCommunicator : IServerCommunicator
     /// Sends a message to the server.
     /// </summary>
     /// <param name="message">Message to send.</param>
-    public void SendMessage(Message message) => TCPWriter.WriteLine(message.ToString());
+    public void SendMessage(Message message)
+    {
+        // Check if the message is null
+        if (message == null) return;
+
+        Console.WriteLine($"Sending message: {message}");
+
+        // Send the message to the server
+        TCPWriter.WriteLine(message.ToString());
+    }
 
     /// <summary>
     /// Reads input from the server.
     /// </summary>
+    /// <param name="cts">Cancellation token source.</param>
     /// <returns>A Message object representing server input.</returns>
-    public async Task<Message?> ReadInput()
+    public async Task<Message?> ReadInput(CancellationTokenSource cts)
     {
-        string? input = await TCPReader.ReadLineAsync();
-        if (input == null) return null;
+        return await Task.Run(() =>
+        {
+            string? input = TCPReader.ReadLine();
+            if (input == null) return null;
 
-        // Try to parse the message
-        else if(Message.Parse(input, out Message message))
+            // Try to parse the message
+            else if (Message.Parse(input, out Message message))
             return message;
 
-        else return null;
+            else return null;
+        }, cts.Token);
     }
 
     /// <summary>
@@ -87,7 +113,7 @@ public class TCPServerCommunicator : IServerCommunicator
         while (!CancellationTokenSource.Token.IsCancellationRequested)
         {
             // Read input from the server
-            Message? message = await ReadInput();
+            Message? message = await ReadInput(new CancellationTokenSource()); // todo
 
             // If the message is null, break the loop
             if (message == null) break;

@@ -28,29 +28,23 @@ public class UserInputReader()
     public bool IsClosed = false;
 
     /// <summary>
-    /// StreamReader object (for ReadLineAsync).
-    /// </summary>
-    private readonly StreamReader Reader = new(Console.OpenStandardInput());
-
-    /// <summary>
     /// Closes the input reader.
     /// </summary>
     public void Close()
     {
         IsClosed = true;
         UserInputCancellationToken.Cancel();
-        Reader.Close();
     }
 
     /// <summary>
     /// "Main" method of the input reader. Is run until the Close() method is called (by the client).
     /// </summary>
-    public void Run() => Task.Run(async () =>
+    public void Run() => Task.Run(() =>
     {
         while (!UserInputCancellationToken.Token.IsCancellationRequested)
         {
             // Parsing is done separately
-            string? input = await Reader.ReadLineAsync();
+            string? input = Console.ReadLine();
             if (input == null)
             {
                 EofReceived.Invoke();
