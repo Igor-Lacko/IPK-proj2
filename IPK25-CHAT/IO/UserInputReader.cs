@@ -10,17 +10,12 @@ public class UserInputReader()
     /// <summary>
     /// Cancellation token source. Cancels the user input reader at the end of the program.
     /// </summary>
-    private CancellationTokenSource UserInputCancellationToken = new();
+    private readonly CancellationTokenSource UserInputCancellationToken = new();
 
     /// <summary>
     /// Raised on receiving user input.
     /// </summary>
-    public event Action<string> UserInputReceived = str => { };
-
-    /// <summary>
-    /// Raised on receiving EOF (Ctrl+D).
-    /// </summary>
-    private event Action EOFReceived = () => { };
+    public event Action<string?> UserInputReceived = str => { };
 
     /// <summary>
     /// StreamReader object (for ReadLineAsync).
@@ -45,8 +40,7 @@ public class UserInputReader()
         {
             // Parsing is done separately
             string? input = await Reader.ReadLineAsync();
-            if(input == null) EOFReceived.Invoke();
-            else UserInputReceived.Invoke(input);
+            UserInputReceived.Invoke(input);
         }
     });
 }

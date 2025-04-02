@@ -39,8 +39,17 @@ class UserInputValidator
     /// </summary>
     /// <param name="input">Given user input.</param>
     /// <returns>A IReadable object representing the given input.</returns>
-    public IReadable? Validate(string input)
+    public IReadable? Validate(string? input, out bool isEOF)
     {
+        // Check if the input is null or empty
+        isEOF = false;
+
+        if(input == null)
+        {
+            isEOF = true;
+            return null;
+        }
+
         // Truncate the message to 60000 characters
         if(input.Length > 60000)
             input = input[..60000];

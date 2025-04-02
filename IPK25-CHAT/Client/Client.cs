@@ -3,7 +3,6 @@
 namespace IPK_25_CHAT.Client;
 
 using System.Net;
-using System.Net.Sockets;
 using IPK_25_CHAT.IO;
 using IPK_25_CHAT.Command;
 using IPK_25_CHAT.Message;
@@ -30,11 +29,6 @@ public abstract class Client
     /// Port number of the server.
     /// </summary>
     protected ushort Port;
-
-    /// <summary>
-    /// Socket to send from and recieve to.
-    /// </summary>
-    protected Socket ClientSocket;
 
     /// <summary>
     /// Thrown by the client when it's state changes. Useful for example
@@ -67,7 +61,12 @@ public abstract class Client
     /// <summary>
     /// Queue of user inputs.
     /// </summary>
-    private readonly UserInputQueue InputQueue = new();
+    private readonly InputQueue<string> UserInputQueue = new();
+
+    /// <summary>
+    /// Queue of server inputs. Might not be needed? TODO.
+    /// </summary>
+    private readonly InputQueue<Message> ServerInputQueue = new();
 
     /// <summary>
     /// Cancellation token for the Run() task.
@@ -84,19 +83,17 @@ public abstract class Client
     /// </summary>
     /// <param name="host">IP address of the server.</param>
     /// <param name="port">Port number of the server.</param>
-    public Client(IPAddress host, ushort port)
+    /// <param name="T">Type of the client data (string/bytes).</param>
+    public Client(IPAddress host, ushort port, Type T)
     {
         // Instance attributes
         Host = host;
         Port = port;
         ServerCommunicator = CreateServerCommunicator();
-        ClientSocket = CreateSocket();
         InputValidator = new UserInputValidator(this);
 
-        // Subscribe to events
+        // Subscribe to the user input event
         UserInputReader.UserInputReceived += OnUserInputReceived;
-        ServerCommunicator.ErrMessageReceived += OnErrMessageReceived;
-        ServerCommunicator.ByeMessageReceived += OnByeMessageReceived;
     }
 
     /// <summary>
@@ -104,7 +101,13 @@ public abstract class Client
     /// Enqueues the given input.
     /// </summary>
     /// <param name="input">The given input from the user.</param>
-    private void OnUserInputReceived(string input) => InputQueue.Enqueue(input);
+    private void OnUserInputReceived(string? input) => UserInputQueue.Enqueue(input);
+
+    /// <summary>
+    /// Called after the MessageReceived event is raised in the ServerCommunicator class.
+    /// Enqueues the given message.
+    /// </summary>
+    private void OnServerInputReceived(Message? message) => ServerInputQueue.Enqueue(message);
 
     /// <summary>
     /// Client reaction to receiving a ERR message from the server.
@@ -195,7 +198,7 @@ public abstract class Client
                 case State.JOIN:
                     await JoinState();
                     break;
-            }
+            } return;
         } while(State != State.END);
 
         EndState();
@@ -206,26 +209,73 @@ public abstract class Client
     /// </summary>
     private async Task StartState()
     {
-        try
+        // Tasks for user/server input
+        Task<string?> userInputTask = UserInputQueue.Dequeue();
+        Task<Message?> serverInputTask = ServerCommunicator.ReadInput();
+
+        // Wait for either task to finish
+        Task finishedTask = await Task.WhenAny(userInputTask, serverInputTask);
+
+        // Check which task finished
+        if(finishedTask == userInputTask)
         {
-            // Get the next user input
-            IReadable? input = InputValidator.Validate(await InputQueue.Dequeue());
+            // Get the user input
+            IReadable? input = InputValidator.Validate(userInputTask.Result, out bool isEOF);
+            if(isEOF)
+            {
+                // End the program
+                StateChanged.Invoke(State);
+                State = State.END;
+                EndState();
+                return;
+            }
 
-            // If the input is null, the user input was invalid
-            if(input == null) return;
+            // Check if the input is null, if yes it's a invalid input
+            else if(input == null) return;
 
-            // If the input is a valid command (auth or help for now), execute it
-            else
+            // Command
+            else 
             {
                 Command command = (Command)input;
+
+                if(command.Type == CommandType.AUTH)
+                {
+                    // Change the state to AUTH and raise an event
+                    State = State.AUTH;
+                    StateChanged.Invoke(State);
+                }
+
                 ExecuteCommand(command);
             }
         }
 
-        // Task over
-        catch(OperationCanceledException)
+        else if (finishedTask == serverInputTask)
         {
-            return;
+            // Get the server input
+            Message? message = serverInputTask.Result;
+
+            // Local client error, terminate connection and the application
+            if(message == null)
+            {
+                StdoutResultWriter.InternalClientError($"ERROR: {message}");
+                GracefulTermination();
+                Environment.Exit(1);
+            }
+
+            if(message.Type == MessageType.ERR || message.Type == MessageType.BYE)
+            {
+                State = State.END;
+                StateChanged.Invoke(State);
+                return;
+            }
+
+            // Again, local client error, terminate connection and the application
+            else
+            {
+                StdoutResultWriter.InternalClientError($"ERROR: {message}");
+                GracefulTermination();
+                Environment.Exit(1);
+            }
         }
     }
 
@@ -256,14 +306,13 @@ public abstract class Client
     }
 
     /// <summary>
-    /// Creates the socket for sending and receiving messages.
-    /// </summary>
-    /// <returns>Initialized socket object with (AddressFamily.InterNetwork, SockType.Stream|Dgram, ProtocolType.Tcp|Udp)</returns>
-    protected abstract Socket CreateSocket();
-
-    /// <summary>
     /// Creates the protocol-specific server communicator.
     /// </summary>
     /// <returns>Server communicator object.</returns>
     protected abstract IServerCommunicator CreateServerCommunicator();
+
+    /// <summary>
+    /// Gracefully terminates the connection to the server.
+    /// </summary>
+    protected abstract void GracefulTermination();
 }

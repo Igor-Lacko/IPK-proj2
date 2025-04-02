@@ -10,34 +10,29 @@ using IPK_25_CHAT.Message;
 public interface IServerCommunicator
 {
     /// <summary>
+    /// Event thrown when a message is received from the server when receiving in a loop.
+    /// </summary>
+    public event Action<Message> MessageReceived;
+
+    /// <summary>
     /// Sends a message to the server.
     /// </summary>
     /// <param name="message">Message to send.</param>
     public void SendMessage(Message message);
 
     /// <summary>
-    /// Closes the communicator.
-    /// </summary>
-    public void Close();
-
-    /// <summary>
     /// Reads input from the server.
     /// </summary>
     /// <returns>A Message object representing server input.</returns>
-    public Task<Message> ReadInput();
+    public Task<Message?> ReadInput();
 
     /// <summary>
-    /// Event thrown on receiving an ERR message.
+    /// Reads input from the server in a loop.
     /// </summary>
-    public event Action<ErrMessage> ErrMessageReceived;
+    public Task RecieveInputInLoop();
 
     /// <summary>
-    /// Event thrown on receiving a BYE message.
+    /// Closes the communicator.
     /// </summary>
-    public event Action ByeMessageReceived;
-
-    /// <summary>
-    /// Event thrown on receiving a malformed message.
-    /// </summary>
-    public event Action<string> MalformedMessageReceived;
+    public void Close();
 }

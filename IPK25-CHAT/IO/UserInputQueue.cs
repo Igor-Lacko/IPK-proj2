@@ -1,16 +1,16 @@
-/* Class containing a queue of user inputs (messages, commands) */
+/* Class containing a queue of inputs (messages, commands) */
 
 namespace IPK_25_CHAT.IO;
 
 /// <summary>
-/// Provides a interface for interacting with a queue of user inputs.
+/// Provides a interface for interacting with a queue of inputs.
 /// </summary>
-class UserInputQueue
+class InputQueue<T>
 {
     /// <summary>
-    /// Queue of user inputs.
+    /// Queue of inputs.
     /// </summary>
-    private readonly Queue<string> InputQueue = new();
+    private readonly Queue<T?> InQueue = new();
 
     /// <summary>
     /// Semaphore controling access to the queue.
@@ -18,22 +18,22 @@ class UserInputQueue
     private readonly Semaphore QueueGuardian = new(0, 1);
 
     /// <summary>
-    /// Wrapper on enqueueing user input.
+    /// Wrapper on enqueueing input.
     /// </summary>
-    /// <param name="input">User input to enqueue.</param>
-    public void Enqueue(string input)
+    /// <param name="input">Input to enqueue.</param>
+    public void Enqueue(T? input)
     {
-        InputQueue.Enqueue(input);
+        InQueue.Enqueue(input);
         QueueGuardian.Release();
     }
 
     /// <summary>
-    /// Wrapper on dequeueing user input.
+    /// Wrapper on dequeueing input.
     /// </summary>
-    /// <returns>User input from the queue.</returns>
-    public async Task<string> Dequeue() => await Task.Run(() => 
+    /// <returns>input from the queue.</returns>
+    public async Task<T?> Dequeue() => await Task.Run(() => 
     {
         QueueGuardian.WaitOne();
-        return InputQueue.Dequeue();
+        return InQueue.Dequeue();
     });
 }
