@@ -1,11 +1,11 @@
-/* Has a structure which contains user data */
+/* Has a class which contains user data */
 
 namespace IPK_25_CHAT.Client;
 
 /// <summary>
-/// Structure that contains data representing one client session.
+/// class that contains data representing one client session.
 /// </summary>
-public struct UserSessionConfiguration(string? username = null, string? displayName = null, string? channelID = null)
+public class UserSessionConfiguration(string? username = null, string? displayName = null, string? channelID = null)
 {
     /// <summary>
     /// Username.

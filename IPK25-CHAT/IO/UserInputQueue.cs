@@ -5,12 +5,12 @@ namespace IPK_25_CHAT.IO;
 /// <summary>
 /// Provides a interface for interacting with a queue of inputs.
 /// </summary>
-class InputQueue<T>
+public class InputQueue<T>
 {
     /// <summary>
     /// Queue of inputs.
     /// </summary>
-    private readonly Queue<T?> InQueue = new();
+    private readonly Queue<T> InQueue = new();
 
     /// <summary>
     /// Semaphore controling access to the queue.
@@ -21,7 +21,7 @@ class InputQueue<T>
     /// Wrapper on enqueueing input.
     /// </summary>
     /// <param name="input">Input to enqueue.</param>
-    public void Enqueue(T? input)
+    public void Enqueue(T input)
     {
         InQueue.Enqueue(input);
         QueueGuardian.Release();
@@ -31,7 +31,7 @@ class InputQueue<T>
     /// Wrapper on dequeueing input.
     /// </summary>
     /// <returns>input from the queue.</returns>
-    public async Task<T?> Dequeue() => await Task.Run(() => 
+    public async Task<T> Dequeue() => await Task.Run(() => 
     {
         QueueGuardian.WaitOne();
         return InQueue.Dequeue();

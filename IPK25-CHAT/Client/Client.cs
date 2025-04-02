@@ -16,9 +16,22 @@ using IPK_25_CHAT.Enum;
 public abstract class Client
 {
     /// <summary>
+    /// Field to allow non-recursive setting.
+    /// </summary>
+    protected State _state = State.START;
+
+    /// <summary>
     /// Client's current state.
     /// </summary>
-    protected State State = State.START;
+    protected State ClientState
+    {
+        get => _state;
+        set
+        {
+            _state = value;
+            InputValidator.ClientState = value;
+        }
+    }
 
     /// <summary>
     /// IP address of the server.
@@ -31,69 +44,88 @@ public abstract class Client
     protected ushort Port;
 
     /// <summary>
-    /// Thrown by the client when it's state changes. Useful for example
-    /// for the input validator to be able to react to invalid messages
-    /// for a given state, e.g. they would otherwise be valid.
+    /// Field to allow non-recursive setting.
     /// </summary>
-    public event Action<State> StateChanged = state => { };
-
-    /// <summary>
-    /// Thrown by the client when thje user settings (e.g. username, display name change).
-    /// Used by the input validator for constructing Msg messages.
-    /// </summary>
-    public event Action<UserSessionConfiguration> UserSessionChanged = config => { };
+    protected UserSessionConfiguration _config = new();
 
     /// <summary>
     /// Current session settings (username, etc.).
     /// </summary>
-    private UserSessionConfiguration Config = new();
+    protected UserSessionConfiguration Config
+    {
+        get => _config;
+        set
+        {
+            _config = value;
+            InputValidator.Config = value;
+        }
+    }
 
     /// <summary>
     /// Throws events subscribed to by the client on receiving user input.
     /// </summary>
-    private readonly UserInputReader UserInputReader = new();
+    protected readonly UserInputReader InputReader = new();
 
     /// <summary>
     /// Reads input from the server and sends messages to the server.
     /// </summary>
-    private readonly IServerCommunicator ServerCommunicator;
+    protected readonly IServerCommunicator ServerCommunicator;
 
     /// <summary>
     /// Queue of user inputs.
     /// </summary>
-    private readonly InputQueue<string> UserInputQueue = new();
+    protected readonly InputQueue<string> UserInputQueue = new();
 
     /// <summary>
     /// Queue of server inputs. Might not be needed? TODO.
     /// </summary>
-    private readonly InputQueue<Message> ServerInputQueue = new();
-
-    /// <summary>
-    /// Cancellation token for the Run() task.
-    /// </summary>
-    private readonly CancellationTokenSource RunCancelToken = new();
+    protected readonly InputQueue<Message?> ServerInputQueue = new();
 
     /// <summary>
     /// Validator for user input.
     /// </summary>
-    private readonly UserInputValidator InputValidator;
+    protected readonly UserInputValidator InputValidator;
 
     /// <summary>
     /// Constructor. Sets the host and port.
     /// </summary>
     /// <param name="host">IP address of the server.</param>
     /// <param name="port">Port number of the server.</param>
-    /// <param name="T">Type of the client data (string/bytes).</param>
-    public Client(IPAddress host, ushort port, Type T)
+    public Client(IPAddress host, ushort port)
     {
         // Instance attributes
         Host = host;
         Port = port;
         ServerCommunicator = CreateServerCommunicator();
-        InputValidator = new UserInputValidator(this);
+        InputValidator = new UserInputValidator();
 
-        // Subscribe to the user input event
-        UserInputReader.UserInputReceived += OnUserInputReceived;
+        // Subscribe to events
+        InputReader.UserInputReceived += OnUserInputReceived;
+        InputReader.EofReceived += OnEofReceived;
+        ServerCommunicator.MessageReceived += OnServerInputReceived;
+        Console.CancelKeyPress += (sender, e) => { OnEofReceived(); };
+    }
+
+    /// <summary>
+    /// Called when the end of file (EOF) is received.
+    /// </summary>
+    private void OnEofReceived()
+    {
+        GracefulTermination();
+        Environment.Exit(0);
+    }
+
+    /// <summary>
+    /// Sends a message or executes a command.
+    /// </summary>
+    /// <param name="input">Message or command.</param>
+    protected void RunUserInput(IReadable input)
+    {
+        if(input is Command command)
+            ExecuteCommand(command);
+
+        else if(input is Message message)
+            ServerCommunicator.SendMessage(message);
     }
 
     /// <summary>
@@ -101,37 +133,13 @@ public abstract class Client
     /// Enqueues the given input.
     /// </summary>
     /// <param name="input">The given input from the user.</param>
-    private void OnUserInputReceived(string? input) => UserInputQueue.Enqueue(input);
+    private void OnUserInputReceived(string input) => UserInputQueue.Enqueue(input);
 
     /// <summary>
     /// Called after the MessageReceived event is raised in the ServerCommunicator class.
     /// Enqueues the given message.
     /// </summary>
     private void OnServerInputReceived(Message? message) => ServerInputQueue.Enqueue(message);
-
-    /// <summary>
-    /// Client reaction to receiving a ERR message from the server.
-    /// </summary>
-    /// <param name="message">The ERR message.</param>
-    private void OnErrMessageReceived(ErrMessage message)
-    {
-        // Print the message locally
-        StdoutResultWriter.PrintErrMessage(message);
-
-        // Change the state to END and raise an event
-        State = State.END;
-        StateChanged.Invoke(State);
-    }
-
-    /// <summary>
-    /// Client reaction to receiving a BYE message from the server.
-    /// </summary>
-    private void OnByeMessageReceived()
-    {
-        // Change the state to END and raise an event
-        State = State.END;
-        StateChanged.Invoke(State);
-    }
 
     /// <summary>
     /// Executes the given AUTH command.
@@ -149,7 +157,7 @@ public abstract class Client
     /// Executes the given command.
     /// </summary>
     /// <param name="command">Command to execute.</param>
-    private void ExecuteCommand(Command command)
+    protected void ExecuteCommand(Command command)
     {
         // Decide based on the type
         switch(command.Type)
@@ -164,7 +172,6 @@ public abstract class Client
 
             case CommandType.RENAME:
                 Config.DisplayName = ((RenameCommand)command).DisplayName;
-                UserSessionChanged.Invoke(Config);
                 break;
 
             case CommandType.JOIN:
@@ -179,9 +186,10 @@ public abstract class Client
     /// </summary>
     private async Task Run()
     {
+        InputReader.Run();
         do
         {
-            switch(State)
+            switch(ClientState)
             {
                 case State.START:
                     await StartState();
@@ -198,8 +206,8 @@ public abstract class Client
                 case State.JOIN:
                     await JoinState();
                     break;
-            } return;
-        } while(State != State.END);
+            } 
+        } while(ClientState != State.END);
 
         EndState();
     }
@@ -210,7 +218,7 @@ public abstract class Client
     private async Task StartState()
     {
         // Tasks for user/server input
-        Task<string?> userInputTask = UserInputQueue.Dequeue();
+        Task<string> userInputTask = UserInputQueue.Dequeue();
         Task<Message?> serverInputTask = ServerCommunicator.ReadInput();
 
         // Wait for either task to finish
@@ -220,33 +228,9 @@ public abstract class Client
         if(finishedTask == userInputTask)
         {
             // Get the user input
-            IReadable? input = InputValidator.Validate(userInputTask.Result, out bool isEOF);
-            if(isEOF)
-            {
-                // End the program
-                StateChanged.Invoke(State);
-                State = State.END;
-                EndState();
-                return;
-            }
-
-            // Check if the input is null, if yes it's a invalid input
-            else if(input == null) return;
-
-            // Command
-            else 
-            {
-                Command command = (Command)input;
-
-                if(command.Type == CommandType.AUTH)
-                {
-                    // Change the state to AUTH and raise an event
-                    State = State.AUTH;
-                    StateChanged.Invoke(State);
-                }
-
-                ExecuteCommand(command);
-            }
+            IReadable? input = InputValidator.Validate(userInputTask.Result);
+            if(input == null) return;
+            else RunUserInput(input);
         }
 
         else if (finishedTask == serverInputTask)
@@ -258,14 +242,12 @@ public abstract class Client
             if(message == null)
             {
                 StdoutResultWriter.InternalClientError($"ERROR: {message}");
-                GracefulTermination();
-                Environment.Exit(1);
+                ErrorExit();
             }
 
-            if(message.Type == MessageType.ERR || message.Type == MessageType.BYE)
+            else if(message.Type == MessageType.ERR || message.Type == MessageType.BYE)
             {
-                State = State.END;
-                StateChanged.Invoke(State);
+                ClientState = State.END;
                 return;
             }
 
@@ -273,8 +255,7 @@ public abstract class Client
             else
             {
                 StdoutResultWriter.InternalClientError($"ERROR: {message}");
-                GracefulTermination();
-                Environment.Exit(1);
+                ErrorExit(sendErrorMessage: false);
             }
         }
     }
@@ -298,12 +279,7 @@ public abstract class Client
     /// Handles the client's end state.
     /// Might not need to be async?
     /// </summary>
-    private void EndState()
-    {
-        ServerCommunicator.Close();
-        UserInputReader.Close();
-        Environment.Exit(0);
-    }
+    protected abstract void EndState();
 
     /// <summary>
     /// Creates the protocol-specific server communicator.
@@ -314,5 +290,17 @@ public abstract class Client
     /// <summary>
     /// Gracefully terminates the connection to the server.
     /// </summary>
-    protected abstract void GracefulTermination();
+    protected abstract void GracefulTermination(bool SendBye = true);
+
+    /// <summary>
+    /// Triggered on the error states of the client.
+    ///     - Send a ERR message to the server, IF POSSIBLE.
+    ///     - Gracefully terminate the connection, IF POSSIBLE.
+    ///     - Exit with the given code.
+    /// </summary>
+    /// <param name="sendErrorMessage">Whether to send an ERR message to the server.</param>
+    /// <param name="errorMessage">Error message.</param>
+    /// <param name="terminateConnection">Whether to terminate the connection.</param>
+    /// <param name="exitCode">Exit code.</param>
+    protected abstract void ErrorExit(bool sendErrorMessage = true, string? errorMessage = null, bool terminateConnection = false, int exitCode = 1);
 }

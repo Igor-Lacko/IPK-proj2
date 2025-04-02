@@ -11,45 +11,26 @@ using IPK_25_CHAT.Command;
 /// <summary>
 /// Validates the current user input for the client. Keeps track of it's state via events.
 /// </summary>
-class UserInputValidator
+public class UserInputValidator
 {
     /// <summary>
     /// Current state of the client. Updated via events.
     /// </summary>
-    private State ClientState { get; set; } = State.START;
+    public State ClientState { get; set; } = State.START;
 
     /// <summary>
     /// User session settings (username, etc.), for constructing Msg messages.
     /// Gotten from the client on construction.
     /// </summary>
-    private UserSessionConfiguration Config { get; set; } = new();
-
-    /// <summary>
-    /// Validator constructor.
-    /// </summary>
-    /// <param name="toSubscribe">Subscribes to this client's StateChanged event.</param>
-    public UserInputValidator(Client toSubscribe)
-    {
-        toSubscribe.StateChanged += state => ClientState = state;
-        toSubscribe.UserSessionChanged += config => Config = config;
-    }
+    public UserSessionConfiguration Config { get; set; } = new();
 
     /// <summary>
     /// Validates the current user input and returns it as a IReadable object.
     /// </summary>
     /// <param name="input">Given user input.</param>
     /// <returns>A IReadable object representing the given input.</returns>
-    public IReadable? Validate(string? input, out bool isEOF)
+    public IReadable? Validate(string input)
     {
-        // Check if the input is null or empty
-        isEOF = false;
-
-        if(input == null)
-        {
-            isEOF = true;
-            return null;
-        }
-
         // Truncate the message to 60000 characters
         if(input.Length > 60000)
             input = input[..60000];

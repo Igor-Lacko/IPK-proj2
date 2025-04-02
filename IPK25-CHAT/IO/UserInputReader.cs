@@ -15,7 +15,17 @@ public class UserInputReader()
     /// <summary>
     /// Raised on receiving user input.
     /// </summary>
-    public event Action<string?> UserInputReceived = str => { };
+    public event Action<string> UserInputReceived = str => { };
+
+    /// <summary>
+    /// Raised after receiving EOF
+    /// </summary>
+    public event Action EofReceived = () => { };
+
+    /// <summary>
+    /// Flag indicating whether the input reader is closed.
+    /// </summary>
+    public bool IsClosed = false;
 
     /// <summary>
     /// StreamReader object (for ReadLineAsync).
@@ -27,6 +37,7 @@ public class UserInputReader()
     /// </summary>
     public void Close()
     {
+        IsClosed = true;
         UserInputCancellationToken.Cancel();
         Reader.Close();
     }
@@ -40,7 +51,13 @@ public class UserInputReader()
         {
             // Parsing is done separately
             string? input = await Reader.ReadLineAsync();
-            UserInputReceived.Invoke(input);
+            if (input == null)
+            {
+                EofReceived.Invoke();
+                Close();
+                break;
+            }
+            else UserInputReceived.Invoke(input);
         }
     });
 }
