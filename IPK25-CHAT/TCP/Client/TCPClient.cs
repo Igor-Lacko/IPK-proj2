@@ -41,10 +41,8 @@ public class TCPClient : Client
     /// Gracefully closes the client.
     /// <param name="sendBye">Whether to send a BYE message to the server.</param>
     /// </summary>
-    protected override void GracefulTermination(bool sendBye)
+    protected override void GracefulTermination()
     {
-        if(sendBye) ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
-
         // Close the server communicator
         ServerCommunicator.Close();
 
@@ -128,7 +126,7 @@ public class TCPClient : Client
     /// </summary>
     protected override void EndState()
     {
-        GracefulTermination(false);
+        GracefulTermination();
         Environment.Exit(0);
     }
 
@@ -163,7 +161,7 @@ public class TCPClient : Client
         if(terminateConnection)
             ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
 
-        GracefulTermination(false);
+        GracefulTermination();
 
         Environment.Exit(exitCode);
     }

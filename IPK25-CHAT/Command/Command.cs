@@ -45,42 +45,51 @@ public abstract class Command(CommandType type, string textualRepresentation) : 
     public static bool Parse(string command, out Command? result)
     {
         // Check for the prefix first
-        if(!command.StartsWith('/'))
+        if (!command.StartsWith('/'))
         {
             result = null;
             return false;
         }
 
+
         // Try to match the individual commands
-        switch (command)
+
+        // /rename { DisplayName }
+        if (Regex.IsMatch(command, AuthCommand.Format))
         {
             // /auth { Username } { Secret } { DisplayName }
-            case var _ when Regex.IsMatch(command, AuthCommand.Format):
-                string[] auth_split = Regex.Split(command, @"\s+");
-                result = new AuthCommand(auth_split[1], auth_split[2], auth_split[3]);
-                return true;
+            string[] auth_split = Regex.Split(command, @"\s+");
+            result = new AuthCommand(auth_split[1], auth_split[2], auth_split[3]);
+            return true;
+        }
 
-            // /rename { DisplayName }
-            case var _ when Regex.IsMatch(command, RenameCommand.Format):
-                string[] rename_split = Regex.Split(command, @"\s+");
-                result = new RenameCommand(rename_split[1]);
-                return true;
+        else if (Regex.IsMatch(command, RenameCommand.Format))
+        {
+            string[] rename_split = Regex.Split(command, @"\s+");
+            result = new RenameCommand(rename_split[1]);
+            return true;
+        }
 
-            // /join { ChannelID }
-            case var _ when Regex.IsMatch(command, JoinCommand.Format):
-                string[] join_split = Regex.Split(command, @"\s+");
-                result = new JoinCommand(join_split[1]);
-                return true;
+        // /join { ChannelID }
+        else if (Regex.IsMatch(command, JoinCommand.Format))
+        {
+            string[] join_split = Regex.Split(command, @"\s+");
+            result = new JoinCommand(join_split[1]);
+            return true;
+        }
 
-            // /help
-            case var _ when Regex.IsMatch(command, HelpCommand.Format):
-                result = new HelpCommand();
-                return true;
+        // /help
+        else if (Regex.IsMatch(command, HelpCommand.Format))
+        {
+            result = new HelpCommand();
+            return true;
+        }
 
+        else
+        {
             // Default case
-            default:
-                result = null;
-                return false;
+            result = null;
+            return false;
         }
     }
 }

@@ -111,7 +111,8 @@ public abstract class Client
     /// </summary>
     private void OnEofReceived()
     {
-        bool SendBye = ClientState != State.END && ClientState != State.START;
+        if (ClientState != State.END && ClientState != State.START)
+            ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
         GracefulTermination();
         Environment.Exit(0);
     }
@@ -293,7 +294,7 @@ public abstract class Client
     /// <summary>
     /// Gracefully terminates the connection to the server.
     /// </summary>
-    protected abstract void GracefulTermination(bool SendBye = true);
+    protected abstract void GracefulTermination();
 
     /// <summary>
     /// Triggered on the error states of the client.
