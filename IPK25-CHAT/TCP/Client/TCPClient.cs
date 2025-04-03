@@ -68,77 +68,82 @@ public class TCPClient : Client
     /// Executes the JOIN command.
     /// </summary>
     /// <param name="command">Command to execute.</param>
-    protected override void ExecuteJoinCommand(JoinCommand command) => ServerCommunicator.SendMessage(new JoinMessage(Config.DisplayName!, command.ChannelId));
+    protected override void ExecuteJoinCommand(JoinCommand command)
+    {
+        ServerCommunicator.SendMessage(new JoinMessage(Config.DisplayName!, command.ChannelId));
+        ClientState = State.JOIN;
+    }
+
+    /// <summary>
+    /// Called upon receiving server input. Checks if the mesage is not valid for the current state.
+    /// Also checks for ERR/BYE and MALFORMED messages.
+    /// </summary>
+    /// <param name="message">The message received.</param>
+    protected override bool TerminatingMessageReceived(Message message)
+    {
+        // Invalid message for the given state
+        if(!message.IsValid(ClientState))
+        {
+            ServerCommunicator.SendMessage(new ErrMessage(Config.DisplayName!, $"Invalid message {message} in state {ClientState}"));
+            ClientState = State.END;
+            return true;
+        }
+
+        // Maybe ERR/BYE/MALFORMED
+        switch(message.Type)
+        {
+            // Print the message and go to END
+            case MessageType.ERR:
+                StdoutResultWriter.PrintErrMessage((ErrMessage)message);
+                ClientState = State.END;
+                return true;
+
+            // Go to END
+            case MessageType.BYE:
+                ClientState = State.END;
+                return true;
+
+            // Print a local error and terminate
+            case MessageType.MALFORMED:
+                StdoutResultWriter.InternalClientError(((MalformedMessage)message).MessageContent);
+                ErrorExit(true, "Malformed message received", true);
+                return true;
+        }
+
+        // Valid message
+        return false;
+    }
 
     /// <summary>
     /// Handles the AUTH state. Waits for a reply from the server.
     /// </summary>
     protected override async Task AuthState()
     {
+        // Wait for a message from the server
+        Message message = await ServerInputQueue.Dequeue();
 
-        // Cancellation token source to only wait for one task
-        using var inputReadCancel = new CancellationTokenSource();
+        // Decide based on the type
+        if(TerminatingMessageReceived(message))
+            return;
 
-        // Tasks for user/server input
-        Task<string?> userInputTask = UserInputQueue.Dequeue(inputReadCancel.Token);
-        Task<Message> serverInputTask = ServerInputQueue.Dequeue(inputReadCancel.Token);
-
-        // Wait for either task to finish
-        Task finishedTask = await Task.WhenAny(userInputTask, serverInputTask);
-
-        // Cancel the other task
-        inputReadCancel.Cancel();
-
-        // If the user input task completed first, validate the input
-        if(finishedTask == userInputTask)
+        // Check if the server replied with a positive or negative reply
+        else if(message.Type == MessageType.REPLY)
         {
-            // Ctrl+C or Ctrl+D
-            if(userInputTask.Result == null) OnEofReceived();
+            // Print the result
+            StdoutResultWriter.PrintReplyMessage((ReplyMessage)message);
 
-            // Validate the input
-            IReadable? input = InputValidator.Validate(userInputTask.Result!);
-            if(input == null) return;
-
-            // Execute potential commands, basically only help or rename
-            RunUserInput(input);
-        }
-
-        // Got a response from the server
-        else if(finishedTask == serverInputTask)
-        {
-            Message message = await serverInputTask;
-
-            // Malformed or invalid message
-            if(message.Type == MessageType.MALFORMED)
+            // Go to OPEN or stay
+            if(((ReplyMessage)message).OK)
             {
-                // Malformed message, print it and exit
-                StdoutResultWriter.InternalClientError(((MalformedMessage)message).MessageContent);
-                ErrorExit(true, "Malformed message received!", true);
+                ClientState = State.OPEN;
+                return;
             }
 
-            // Invalid message for the given state, if it's MSG print it and exit the program
-            else if(!message.IsValid(ClientState))
-                ErrorExit(true, "Invalid message for AUTH state!", true);
-
-            // Valid message
-            else switch(message.Type)
+            // START is basically AUTH when waiting for the user/server
+            else
             {
-                // Either stay in AUTH or go to OPEN
-                case MessageType.REPLY:
-                    StdoutResultWriter.PrintReplyMessage((ReplyMessage)message);
-                    ClientState = ((ReplyMessage)message).OK ? State.OPEN : State.AUTH;
-                    return;
-
-                case MessageType.ERR:
-                    StdoutResultWriter.PrintErrMessage((ErrMessage)message);
-                    ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
-                    ClientState = State.END;
-                    return;
-
-                case MessageType.BYE:
-                    ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
-                    ClientState = State.END;
-                    return;
+                ClientState = State.START;
+                return;
             }
         }
     }

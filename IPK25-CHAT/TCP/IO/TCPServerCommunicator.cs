@@ -34,11 +34,6 @@ public class TCPServerCommunicator : IServerCommunicator
     private readonly StreamWriter TCPWriter;
 
     /// <summary>
-    /// Current value of the message received from the server.
-    /// </summary>
-    public Message? CurrentValue = null;
-
-    /// <summary>
     /// Event thrown when a message is received from the server when receiving in a loop.
     /// </summary>
     public event Action<Message> MessageReceived = message => { };

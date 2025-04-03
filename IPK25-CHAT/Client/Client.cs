@@ -146,6 +146,13 @@ public abstract class Client
     private void OnServerInputReceived(Message message) => ServerInputQueue.Enqueue(message);
 
     /// <summary>
+    /// Called to check if a message from the server is terminating the connection.
+    /// </summary>
+    /// <param name="message">Message received.</param>
+    /// <returns>True if the message is terminating, false otherwise.</returns>
+    protected abstract bool TerminatingMessageReceived(Message message);
+
+    /// <summary>
     /// Executes the given AUTH command.
     /// </summary>
     /// <param name="command">AUTH command with parameters.</param>

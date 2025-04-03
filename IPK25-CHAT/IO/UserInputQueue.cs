@@ -23,7 +23,6 @@ public class InputQueue<T>
     /// <param name="input">Input to enqueue.</param>
     public void Enqueue(T input)
     {
-        Console.WriteLine("Enqueueing input: " + input);
         InQueue.Enqueue(input);
         QueueGuardian.Release();
     }
@@ -32,12 +31,12 @@ public class InputQueue<T>
     /// Wrapper on dequeueing input.
     /// </summary>
     /// <returns>input from the queue.</returns>
-    public async Task<T> Dequeue(CancellationToken token)
+    public async Task<T> Dequeue(CancellationToken? token = null)
     {
         try
         {
-            Console.WriteLine("Waiting for input...");
-            await QueueGuardian.WaitAsync(token);
+            if(token == null) await QueueGuardian.WaitAsync();
+            else await QueueGuardian.WaitAsync((CancellationToken)token!);
             return InQueue.Dequeue();
         }
 
