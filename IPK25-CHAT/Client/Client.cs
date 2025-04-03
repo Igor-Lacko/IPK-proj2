@@ -111,7 +111,7 @@ public abstract class Client
     /// </summary>
     private void OnEofReceived()
     {
-        if (ClientState != State.END && ClientState != State.START)
+        if (ClientState != State.END)
             ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
         GracefulTermination();
         Environment.Exit(0);
@@ -221,8 +221,7 @@ public abstract class Client
     {
         // Tasks for user/server input
         Task<string> userInputTask = UserInputQueue.Dequeue();
-        CancellationTokenSource serverInputCancellationTokenSource = new();
-        Task<Message?> serverInputTask = Task.Run(() => ServerCommunicator.ReadInput(serverInputCancellationTokenSource));
+        Task<Message?> serverInputTask = Task.Run(() => ServerCommunicator.ReadInput());
 
         // Wait for either task to finish
         Task finishedTask = await Task.WhenAny(userInputTask, serverInputTask);
@@ -232,7 +231,6 @@ public abstract class Client
         {
             // Get the user input
             IReadable? input = InputValidator.Validate(userInputTask.Result);
-            serverInputCancellationTokenSource.Cancel();
             if(input == null) return;
             else RunUserInput(input);
         }

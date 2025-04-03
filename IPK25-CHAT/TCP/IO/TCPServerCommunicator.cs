@@ -36,7 +36,7 @@ public class TCPServerCommunicator : IServerCommunicator
     /// <summary>
     /// Event thrown when a message is received from the server when receiving in a loop.
     /// </summary>
-    public event Action<Message> MessageReceived = message => { };
+    public event Action<Message?> MessageReceived = message => { };
 
     /// <summary>
     /// Cancellation token source. Cancels the server communicator at the end of the program.
@@ -79,8 +79,6 @@ public class TCPServerCommunicator : IServerCommunicator
         // Check if the message is null
         if (message == null) return;
 
-        Console.WriteLine($"Sending message: {message}");
-
         // Send the message to the server
         TCPWriter.WriteLine(message.ToString());
     }
@@ -88,9 +86,8 @@ public class TCPServerCommunicator : IServerCommunicator
     /// <summary>
     /// Reads input from the server.
     /// </summary>
-    /// <param name="cts">Cancellation token source.</param>
     /// <returns>A Message object representing server input.</returns>
-    public async Task<Message?> ReadInput(CancellationTokenSource cts)
+    public async Task<Message?> ReadInput()
     {
         return await Task.Run(() =>
         {
@@ -102,7 +99,7 @@ public class TCPServerCommunicator : IServerCommunicator
             return message;
 
             else return null;
-        }, cts.Token);
+        });
     }
 
     /// <summary>
@@ -113,10 +110,7 @@ public class TCPServerCommunicator : IServerCommunicator
         while (!CancellationTokenSource.Token.IsCancellationRequested)
         {
             // Read input from the server
-            Message? message = await ReadInput(new CancellationTokenSource()); // todo
-
-            // If the message is null, break the loop
-            if (message == null) break;
+            Message? message = await ReadInput();
 
             // Invoke the event
             MessageReceived.Invoke(message);

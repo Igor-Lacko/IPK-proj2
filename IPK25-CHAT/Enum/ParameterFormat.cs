@@ -4,7 +4,7 @@ namespace IPK_25_CHAT.Enum;
 
 /// <summary>
 /// Enumeration of command/message parameters.
-/// Is not a enum, since enums can't have a base class, but a static class with constant fields as a workaround.
+/// Is not a enum, since enums can't have a string base class, but a static class with constant fields as a workaround.
 /// </summary>
 public static class ParameterFormats
 {
@@ -26,5 +26,5 @@ public static class ParameterFormats
     /// <summary>
     /// Regular expression for the displayed name.
     /// </summary>
-    public const string DISPLAY_NAME = @"[0x21-7E]{1,20}";
+    public const string DISPLAY_NAME = @"[x21-x7e]{1,20}";
 }

@@ -12,7 +12,7 @@ public interface IServerCommunicator
     /// <summary>
     /// Event thrown when a message is received from the server when receiving in a loop.
     /// </summary>
-    public event Action<Message> MessageReceived;
+    public event Action<Message?> MessageReceived;
 
     /// <summary>
     /// Sends a message to the server.
@@ -23,9 +23,8 @@ public interface IServerCommunicator
     /// <summary>
     /// Reads input from the server.
     /// </summary>
-    /// <param name="cts">Cancellation token source.</param>
     /// <returns>A Message object representing server input.</returns>
-    public Task<Message?> ReadInput(CancellationTokenSource cts);
+    public Task<Message?> ReadInput();
 
     /// <summary>
     /// Reads input from the server in a loop.
