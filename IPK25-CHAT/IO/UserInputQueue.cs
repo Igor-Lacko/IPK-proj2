@@ -15,7 +15,7 @@ public class InputQueue<T>
     /// <summary>
     /// Semaphore controling access to the queue.
     /// </summary>
-    private readonly Semaphore QueueGuardian = new(0, 1);
+    private readonly SemaphoreSlim QueueGuardian = new(0, 1);
 
     /// <summary>
     /// Wrapper on enqueueing input.
@@ -23,6 +23,7 @@ public class InputQueue<T>
     /// <param name="input">Input to enqueue.</param>
     public void Enqueue(T input)
     {
+        Console.WriteLine("Enqueueing input: " + input);
         InQueue.Enqueue(input);
         QueueGuardian.Release();
     }
@@ -31,9 +32,18 @@ public class InputQueue<T>
     /// Wrapper on dequeueing input.
     /// </summary>
     /// <returns>input from the queue.</returns>
-    public async Task<T> Dequeue() => await Task.Run(() => 
+    public async Task<T> Dequeue(CancellationToken token)
     {
-        QueueGuardian.WaitOne();
-        return InQueue.Dequeue();
-    });
+        try
+        {
+            Console.WriteLine("Waiting for input...");
+            await QueueGuardian.WaitAsync(token);
+            return InQueue.Dequeue();
+        }
+
+        catch (OperationCanceledException)
+        {
+            return default!;
+        }
+    }
 }

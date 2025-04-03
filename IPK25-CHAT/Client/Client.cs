@@ -79,7 +79,7 @@ public abstract class Client
     /// <summary>
     /// Queue of server inputs. Might not be needed? TODO.
     /// </summary>
-    protected readonly InputQueue<Message?> ServerInputQueue = new();
+    protected readonly InputQueue<Message> ServerInputQueue = new();
 
     /// <summary>
     /// Validator for user input.
@@ -143,7 +143,7 @@ public abstract class Client
     /// Called after the MessageReceived event is raised in the ServerCommunicator class.
     /// Enqueues the given message.
     /// </summary>
-    private void OnServerInputReceived(Message? message) => ServerInputQueue.Enqueue(message);
+    private void OnServerInputReceived(Message message) => ServerInputQueue.Enqueue(message);
 
     /// <summary>
     /// Executes the given AUTH command.
@@ -190,7 +190,11 @@ public abstract class Client
     /// </summary>
     public async Task Run()
     {
+        // Receive input
         InputReader.Run();
+        ServerCommunicator.Run();
+
+        // FSM loop
         do
         {
             switch(ClientState)
@@ -221,12 +225,18 @@ public abstract class Client
     /// </summary>
     private async Task StartState()
     {
+        // Cancellation token source to only wait for one task
+        using var readInputCancel = new CancellationTokenSource();
+
         // Tasks for user/server input
-        Task<string?> userInputTask = UserInputQueue.Dequeue();
-        Task<Message> serverInputTask = Task.Run(() => ServerCommunicator.ReadInput());
+        Task<string?> userInputTask = UserInputQueue.Dequeue(readInputCancel.Token);
+        Task<Message> serverInputTask = ServerInputQueue.Dequeue(readInputCancel.Token);
 
         // Wait for either task to finish
         Task finishedTask = await Task.WhenAny(userInputTask, serverInputTask);
+
+        // Cancel the other task
+        readInputCancel.Cancel();
 
         // Check which task finished
         if(finishedTask == userInputTask)

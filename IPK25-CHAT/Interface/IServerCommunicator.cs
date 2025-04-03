@@ -12,7 +12,7 @@ public interface IServerCommunicator
     /// <summary>
     /// Event thrown when a message is received from the server when receiving in a loop.
     /// </summary>
-    public event Action<Message?> MessageReceived;
+    public event Action<Message> MessageReceived;
 
     /// <summary>
     /// Sends a message to the server.
@@ -21,15 +21,9 @@ public interface IServerCommunicator
     public void SendMessage(Message message);
 
     /// <summary>
-    /// Reads input from the server.
-    /// </summary>
-    /// <returns>A Message object representing server input.</returns>
-    public Task<Message> ReadInput();
-
-    /// <summary>
     /// Reads input from the server in a loop.
     /// </summary>
-    public Task RecieveInputInLoop();
+    public void Run();
 
     /// <summary>
     /// Closes the communicator.

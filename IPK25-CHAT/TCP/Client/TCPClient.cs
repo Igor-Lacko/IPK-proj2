@@ -3,7 +3,6 @@
 namespace IPK_25_CHAT.TCP.Client;
 
 using System.Net;
-using System.Net.Sockets;
 using IPK_25_CHAT.Client;
 using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Command;
@@ -76,15 +75,22 @@ public class TCPClient : Client
     /// </summary>
     protected override async Task AuthState()
     {
-        // Tasks for user/server input
-        Task<string?> userInputTask = UserInputQueue.Dequeue();
-        Task<Message> serverInputTask = ServerCommunicator.ReadInput();
 
-        // Wait for the first task to complete
-        Task completedTask = await Task.WhenAny(userInputTask, serverInputTask);
+        // Cancellation token source to only wait for one task
+        using var inputReadCancel = new CancellationTokenSource();
+
+        // Tasks for user/server input
+        Task<string?> userInputTask = UserInputQueue.Dequeue(inputReadCancel.Token);
+        Task<Message> serverInputTask = ServerInputQueue.Dequeue(inputReadCancel.Token);
+
+        // Wait for either task to finish
+        Task finishedTask = await Task.WhenAny(userInputTask, serverInputTask);
+
+        // Cancel the other task
+        inputReadCancel.Cancel();
 
         // If the user input task completed first, validate the input
-        if(completedTask == userInputTask)
+        if(finishedTask == userInputTask)
         {
             // Ctrl+C or Ctrl+D
             if(userInputTask.Result == null) OnEofReceived();
@@ -98,7 +104,7 @@ public class TCPClient : Client
         }
 
         // Got a response from the server
-        else if(completedTask == serverInputTask)
+        else if(finishedTask == serverInputTask)
         {
             Message message = await serverInputTask;
 

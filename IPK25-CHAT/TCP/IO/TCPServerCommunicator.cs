@@ -34,14 +34,19 @@ public class TCPServerCommunicator : IServerCommunicator
     private readonly StreamWriter TCPWriter;
 
     /// <summary>
+    /// Current value of the message received from the server.
+    /// </summary>
+    public Message? CurrentValue = null;
+
+    /// <summary>
     /// Event thrown when a message is received from the server when receiving in a loop.
     /// </summary>
-    public event Action<Message?> MessageReceived = message => { };
+    public event Action<Message> MessageReceived = message => { };
 
     /// <summary>
     /// Cancellation token source. Cancels the server communicator at the end of the program.
     /// </summary>
-    public CancellationTokenSource CancellationTokenSource { get; } = new();
+    public CancellationTokenSource ServerInputCancellationToken { get; } = new();
 
     /// <summary>
     /// Constructor for TCPServerCommunicator.
@@ -86,46 +91,23 @@ public class TCPServerCommunicator : IServerCommunicator
     /// <summary>
     /// Reads input from the server.
     /// </summary>
-    /// <returns>A Message object representing server input.</returns>
-    public async Task<Message> ReadInput()
+    public void Run() => Task.Run(() =>
     {
-        return await Task.Run(() =>
+        while (!ServerInputCancellationToken.Token.IsCancellationRequested)
         {
+            // Parsing is done separately
             string? input = TCPReader.ReadLine();
-            Console.WriteLine($"Received input from server: {input}");
-
-            // Try to parse the message
-            if (Message.Parse(input, out Message message))
-            {
-                Console.WriteLine($"Received message: {message}");
-                return message;
-            }
-
-            else return message;
-        });
-    }
-
-    /// <summary>
-    /// Reads input from the server in a loop.
-    /// </summary>
-    public async Task RecieveInputInLoop()
-    {
-        while (!CancellationTokenSource.Token.IsCancellationRequested)
-        {
-            // Read input from the server
-            Message? message = await ReadInput();
-
-            // Invoke the event
+            Message message = Message.Parse(input);
             MessageReceived.Invoke(message);
         }
-    }
+    });
 
     /// <summary>
     /// Closes the communicator.
     /// </summary>
     public void Close()
     {
-        CancellationTokenSource.Cancel();
+        ServerInputCancellationToken.Cancel();
         TCPWriter.Close();
         TCPReader.Close();
         TCPStream.Close();
