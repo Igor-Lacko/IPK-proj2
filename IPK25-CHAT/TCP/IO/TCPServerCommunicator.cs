@@ -87,22 +87,21 @@ public class TCPServerCommunicator : IServerCommunicator
     /// Reads input from the server.
     /// </summary>
     /// <returns>A Message object representing server input.</returns>
-    public async Task<Message?> ReadInput()
+    public async Task<Message> ReadInput()
     {
         return await Task.Run(() =>
         {
             string? input = TCPReader.ReadLine();
-            Console.WriteLine($"Received input: {input}");
-            if (input == null) return null;
+            Console.WriteLine($"Received input from server: {input}");
 
             // Try to parse the message
-            else if (Message.Parse(input, out Message? message))
+            if (Message.Parse(input, out Message message))
             {
-                Console.WriteLine($"Received message: {message!.ToString()}");
+                Console.WriteLine($"Received message: {message}");
                 return message;
             }
 
-            else return null;
+            else return message;
         });
     }
 

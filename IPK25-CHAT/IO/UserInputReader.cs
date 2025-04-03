@@ -15,7 +15,7 @@ public class UserInputReader()
     /// <summary>
     /// Raised on receiving user input.
     /// </summary>
-    public event Action<string> UserInputReceived = str => { };
+    public event Action<string?> UserInputReceived = str => { };
 
     /// <summary>
     /// Raised after receiving EOF
@@ -23,18 +23,9 @@ public class UserInputReader()
     public event Action EofReceived = () => { };
 
     /// <summary>
-    /// Flag indicating whether the input reader is closed.
-    /// </summary>
-    public bool IsClosed = false;
-
-    /// <summary>
     /// Closes the input reader.
     /// </summary>
-    public void Close()
-    {
-        IsClosed = true;
-        UserInputCancellationToken.Cancel();
-    }
+    public void Close() => UserInputCancellationToken.Cancel();
 
     /// <summary>
     /// "Main" method of the input reader. Is run until the Close() method is called (by the client).
@@ -45,13 +36,7 @@ public class UserInputReader()
         {
             // Parsing is done separately
             string? input = Console.ReadLine();
-            if (input == null)
-            {
-                EofReceived.Invoke();
-                Close();
-                break;
-            }
-            else UserInputReceived.Invoke(input);
+            UserInputReceived.Invoke(input);
         }
     });
 }

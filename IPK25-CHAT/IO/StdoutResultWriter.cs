@@ -28,7 +28,7 @@ public static class StdoutResultWriter
     /// Prints a internal client error message to stdout.
     /// </summary>
     /// <param name="errorMessage">Error message to print.</param>
-    public static void InternalClientError(string errorMessage)
+    public static void InternalClientError(string? errorMessage)
     {
         Console.WriteLine($"ERROR: {errorMessage}");
     }

@@ -74,7 +74,7 @@ public abstract class Client
     /// <summary>
     /// Queue of user inputs.
     /// </summary>
-    protected readonly InputQueue<string> UserInputQueue = new();
+    protected readonly InputQueue<string?> UserInputQueue = new();
 
     /// <summary>
     /// Queue of server inputs. Might not be needed? TODO.
@@ -101,17 +101,19 @@ public abstract class Client
 
         // Subscribe to events
         InputReader.UserInputReceived += OnUserInputReceived;
-        InputReader.EofReceived += OnEofReceived;
         ServerCommunicator.MessageReceived += OnServerInputReceived;
-        Console.CancelKeyPress += (sender, e) => { OnEofReceived(); };
+
+        // Don't immediately stop running
+        Console.CancelKeyPress += (sender, e) => {  e.Cancel = true; UserInputQueue.Enqueue(null); };
     }
 
     /// <summary>
-    /// Called when the end of file (EOF) is received.
+    /// Called when the end of file (EOF) is received, (well actually dequeued).
+    /// Also called on CTRL + C (when null is dequeued).
     /// </summary>
-    private void OnEofReceived()
+    protected void OnEofReceived()
     {
-        if (ClientState != State.END)
+        if (ClientState != State.END && ClientState != State.START)
             ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
         GracefulTermination();
         Environment.Exit(0);
@@ -135,7 +137,7 @@ public abstract class Client
     /// Enqueues the given input.
     /// </summary>
     /// <param name="input">The given input from the user.</param>
-    private void OnUserInputReceived(string input) => UserInputQueue.Enqueue(input);
+    private void OnUserInputReceived(string? input) => UserInputQueue.Enqueue(input);
 
     /// <summary>
     /// Called after the MessageReceived event is raised in the ServerCommunicator class.
@@ -220,8 +222,8 @@ public abstract class Client
     private async Task StartState()
     {
         // Tasks for user/server input
-        Task<string> userInputTask = UserInputQueue.Dequeue();
-        Task<Message?> serverInputTask = Task.Run(() => ServerCommunicator.ReadInput());
+        Task<string?> userInputTask = UserInputQueue.Dequeue();
+        Task<Message> serverInputTask = Task.Run(() => ServerCommunicator.ReadInput());
 
         // Wait for either task to finish
         Task finishedTask = await Task.WhenAny(userInputTask, serverInputTask);
@@ -229,8 +231,11 @@ public abstract class Client
         // Check which task finished
         if(finishedTask == userInputTask)
         {
+            // EOF or CTRL + C
+            if(userInputTask.Result == null) OnEofReceived();
+
             // Get the user input
-            IReadable? input = InputValidator.Validate(userInputTask.Result);
+            IReadable? input = InputValidator.Validate(userInputTask.Result!);
             if(input == null) return;
             else RunUserInput(input);
         }
@@ -238,13 +243,13 @@ public abstract class Client
         else if (finishedTask == serverInputTask)
         {
             // Get the server input
-            Message? message = serverInputTask.Result;
+            Message message = serverInputTask.Result;
 
             // Local client error, terminate connection and the application
-            if(message == null)
+            if(message.Type == MessageType.MALFORMED)
             {
-                StdoutResultWriter.InternalClientError($"ERROR: {message}");
-                ErrorExit();
+                StdoutResultWriter.InternalClientError(((MalformedMessage)message).MessageContent);
+                ErrorExit(false, null, false);
             }
 
             else if(message.Type == MessageType.ERR || message.Type == MessageType.BYE)
@@ -256,8 +261,8 @@ public abstract class Client
             // Again, local client error, terminate connection and the application
             else
             {
-                StdoutResultWriter.InternalClientError($"ERROR: {message}");
-                ErrorExit(sendErrorMessage: false);
+                StdoutResultWriter.InternalClientError(message.ToString());
+                ErrorExit(false, null, false);
             }
         }
     }
@@ -304,5 +309,5 @@ public abstract class Client
     /// <param name="errorMessage">Error message.</param>
     /// <param name="terminateConnection">Whether to terminate the connection.</param>
     /// <param name="exitCode">Exit code.</param>
-    protected abstract void ErrorExit(bool sendErrorMessage = true, string? errorMessage = null, bool terminateConnection = false, int exitCode = 1);
+    protected abstract void ErrorExit(bool sendErrorMessage, string? errorMessage, bool terminateConnection, int exitCode = 1);
 }

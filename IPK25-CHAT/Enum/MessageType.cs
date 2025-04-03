@@ -33,6 +33,11 @@ public enum MessageType : byte
     MSG = 0x04,
 
     /// <summary>
+    /// Malformed message. Not a valid mesage, created after  a invalid message is received from the server.
+    /// </summary>
+    MALFORMED = 0x05,
+
+    /// <summary>
     /// UDP only. Check if the other party is "still alive".
     /// </summary>
     PING = 0xFD,

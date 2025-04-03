@@ -35,8 +35,15 @@ public abstract class Message(MessageType type) : IReadable
     /// <param name="message">Message string.</param>
     /// <param name="result">Variable to store the result, if parsed successfully.</param>
     /// <returns>True if parsed successfully, else it returns False.</returns>
-    public static bool Parse(string message, out Message? result)
+    public static bool Parse(string? message, out Message result)
     {
+        // Mandatory null check
+        if(message == null)
+        {
+            result = new MalformedMessage(message);
+            return false;
+        }
+
         // Check individual message types
         if(Regex.IsMatch(message, ByeMessage.Format))
         {
@@ -70,7 +77,7 @@ public abstract class Message(MessageType type) : IReadable
         }
 
         // No match found
-        result = null;
+        result = new MalformedMessage(message);
         return false;
     }
 

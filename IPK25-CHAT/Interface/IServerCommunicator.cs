@@ -24,7 +24,7 @@ public interface IServerCommunicator
     /// Reads input from the server.
     /// </summary>
     /// <returns>A Message object representing server input.</returns>
-    public Task<Message?> ReadInput();
+    public Task<Message> ReadInput();
 
     /// <summary>
     /// Reads input from the server in a loop.

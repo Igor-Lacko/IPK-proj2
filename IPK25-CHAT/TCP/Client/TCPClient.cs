@@ -47,7 +47,7 @@ public class TCPClient : Client
         ServerCommunicator.Close();
 
         // Close the UserInputReader
-        if(!InputReader.IsClosed) InputReader.Close();
+        InputReader.Close();
     }
 
     /// <summary>
@@ -62,7 +62,6 @@ public class TCPClient : Client
 
         // Send the AUTH message to the server
         ServerCommunicator.SendMessage(new AuthMessage(command));
-        Console.WriteLine("sent auth");
         ClientState = State.AUTH;
     }
 
@@ -77,10 +76,9 @@ public class TCPClient : Client
     /// </summary>
     protected override async Task AuthState()
     {
-        Console.WriteLine("AUTH state");
         // Tasks for user/server input
-        Task<string> userInputTask = UserInputQueue.Dequeue();
-        Task<Message?> serverInputTask = ServerCommunicator.ReadInput();
+        Task<string?> userInputTask = UserInputQueue.Dequeue();
+        Task<Message> serverInputTask = ServerCommunicator.ReadInput();
 
         // Wait for the first task to complete
         Task completedTask = await Task.WhenAny(userInputTask, serverInputTask);
@@ -88,8 +86,11 @@ public class TCPClient : Client
         // If the user input task completed first, validate the input
         if(completedTask == userInputTask)
         {
-            Console.WriteLine("User input task completed");
-            IReadable? input = InputValidator.Validate(userInputTask.Result);
+            // Ctrl+C or Ctrl+D
+            if(userInputTask.Result == null) OnEofReceived();
+
+            // Validate the input
+            IReadable? input = InputValidator.Validate(userInputTask.Result!);
             if(input == null) return;
 
             // Execute potential commands, basically only help or rename
@@ -99,12 +100,19 @@ public class TCPClient : Client
         // Got a response from the server
         else if(completedTask == serverInputTask)
         {
-            Console.WriteLine("Server input task completed");
-            Message? message = await serverInputTask;
+            Message message = await serverInputTask;
 
-            // Malformed message
-            if(message == null || !message.IsValid(ClientState))
-                ErrorExit(true, "Invalid message from server", true);
+            // Malformed or invalid message
+            if(message.Type == MessageType.MALFORMED)
+            {
+                // Malformed message, print it and exit
+                StdoutResultWriter.InternalClientError(((MalformedMessage)message).MessageContent);
+                ErrorExit(true, "Malformed message received!", true);
+            }
+
+            // Invalid message for the given state, if it's MSG print it and exit the program
+            else if(!message.IsValid(ClientState))
+                ErrorExit(true, "Invalid message for AUTH state!", true);
 
             // Valid message
             else switch(message.Type)
