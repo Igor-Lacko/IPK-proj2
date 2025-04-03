@@ -10,6 +10,10 @@ using IPK_25_CHAT.Enum;
 public class ErrMessage : Message
 {
     /// <summary>
+    /// Regular expression for the textual version of the ERR message.
+    /// </summary>
+    public const string Format = @$"^ERR FROM {ParameterFormats.DISPLAY_NAME} IS {ParameterFormats.MESSAGE_CONTENT}$";
+    /// <summary>
     /// Error message.
     /// </summary>
     public readonly string DisplayName;

@@ -19,7 +19,7 @@ public static class ParameterFormats
     public const string SECRET = @"[a-zA-Z0-9_-]{1,128}";
 
     /// <summary>
-    /// Regular expression for a channel ID.
+    /// Regular expression for a channel ID. The same as username.
     /// </summary>
     public const string CHANNEL_ID = @"[a-zA-Z0-9_-]{1,20}";
 
@@ -27,4 +27,9 @@ public static class ParameterFormats
     /// Regular expression for the displayed name.
     /// </summary>
     public const string DISPLAY_NAME = @"[x21-x7e]{1,20}";
+
+    /// <summary>
+    /// Regular expression for message content.
+    /// </summary>
+    public const string MESSAGE_CONTENT = @"(x0a|[x20-x7e]){1,60000}";
 }

@@ -56,7 +56,13 @@ public class TCPClient : Client
     /// <param name="command">Command to execute.</param>
     protected override void ExecuteAuthCommand(AuthCommand command)
     {
+        // Set user parameters
+        Config.Username = command.Username;
+        Config.DisplayName = command.DisplayName;
+
+        // Send the AUTH message to the server
         ServerCommunicator.SendMessage(new AuthMessage(command));
+        Console.WriteLine("sent auth");
         ClientState = State.AUTH;
     }
 
@@ -71,10 +77,10 @@ public class TCPClient : Client
     /// </summary>
     protected override async Task AuthState()
     {
+        Console.WriteLine("AUTH state");
         // Tasks for user/server input
         Task<string> userInputTask = UserInputQueue.Dequeue();
-        CancellationTokenSource cts = new();
-        Task<Message?> serverInputTask = ServerCommunicator.ReadInput(cts);
+        Task<Message?> serverInputTask = ServerCommunicator.ReadInput();
 
         // Wait for the first task to complete
         Task completedTask = await Task.WhenAny(userInputTask, serverInputTask);
@@ -82,6 +88,7 @@ public class TCPClient : Client
         // If the user input task completed first, validate the input
         if(completedTask == userInputTask)
         {
+            Console.WriteLine("User input task completed");
             IReadable? input = InputValidator.Validate(userInputTask.Result);
             if(input == null) return;
 
@@ -92,6 +99,7 @@ public class TCPClient : Client
         // Got a response from the server
         else if(completedTask == serverInputTask)
         {
+            Console.WriteLine("Server input task completed");
             Message? message = await serverInputTask;
 
             // Malformed message

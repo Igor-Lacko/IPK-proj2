@@ -10,6 +10,11 @@ using IPK_25_CHAT.Enum;
 public class MsgMessage : Message
 {
     /// <summary>
+    /// Regular expression for the textual version of the MSG message.
+    /// </summary>
+    public const string Format = @$"^MSG FROM {ParameterFormats.DISPLAY_NAME} IS {ParameterFormats.MESSAGE_CONTENT}$";
+
+    /// <summary>
     /// Display name of the user.
     /// </summary>
     public readonly string DisplayName;

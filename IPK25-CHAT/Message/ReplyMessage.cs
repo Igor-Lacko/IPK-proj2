@@ -10,6 +10,11 @@ using IPK_25_CHAT.Enum;
 public class ReplyMessage : Message
 {
     /// <summary>
+    /// Regular expression for the textual version of the REPLY message.
+    /// </summary>
+    public const string Format = @$"^REPLY (OK|NOK) IS {ParameterFormats.MESSAGE_CONTENT}$";
+
+    /// <summary>
     /// If this is true, it indicates that the message is a positive reply, negative otherwise.
     /// </summary>
     public readonly bool OK;

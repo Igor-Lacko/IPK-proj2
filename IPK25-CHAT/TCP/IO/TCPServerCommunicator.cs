@@ -67,7 +67,7 @@ public class TCPServerCommunicator : IServerCommunicator
         // Initialize the stream
         TCPStream = new(TCPSocket);
         TCPReader = new(TCPStream);
-        TCPWriter = new(TCPStream);
+        TCPWriter = new(TCPStream) { AutoFlush = true };
     }
 
     /// <summary>
@@ -92,11 +92,15 @@ public class TCPServerCommunicator : IServerCommunicator
         return await Task.Run(() =>
         {
             string? input = TCPReader.ReadLine();
+            Console.WriteLine($"Received input: {input}");
             if (input == null) return null;
 
             // Try to parse the message
-            else if (Message.Parse(input, out Message message))
-            return message;
+            else if (Message.Parse(input, out Message? message))
+            {
+                Console.WriteLine($"Received message: {message!.ToString()}");
+                return message;
+            }
 
             else return null;
         });

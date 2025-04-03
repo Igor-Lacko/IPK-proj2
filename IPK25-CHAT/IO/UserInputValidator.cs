@@ -31,7 +31,6 @@ public class UserInputValidator
     /// <returns>A IReadable object representing the given input.</returns>
     public IReadable? Validate(string input)
     {
-        Console.WriteLine($"Validating input: {input}");
         // Truncate the message to 60000 characters
         if(input.Length > 60000)
             input = input[..60000];
@@ -44,20 +43,20 @@ public class UserInputValidator
                 return command;
 
             // Print a error message to the user
-            StdoutResultWriter.InternalClientError($"ERROR: {command}");
+            StdoutResultWriter.InternalClientError(input);
         }
 
         // Try to look for an invalid command
         else if(input.StartsWith('/'))
         {
-            StdoutResultWriter.InternalClientError($"ERROR: {input}");
+            StdoutResultWriter.InternalClientError(input);
             return null;
         }
 
         // Consider the input as a message
         if(Config.DisplayName == null)
         {
-            StdoutResultWriter.InternalClientError($"ERROR: {input}");
+            StdoutResultWriter.InternalClientError(input);
             return null;
         }
 
@@ -65,7 +64,7 @@ public class UserInputValidator
         MsgMessage msg = new(Config.DisplayName, input);
         if(!msg.IsValid(ClientState))
         {
-            StdoutResultWriter.InternalClientError($"ERROR: {input}");
+            StdoutResultWriter.InternalClientError(input);
             return null;
         }
 

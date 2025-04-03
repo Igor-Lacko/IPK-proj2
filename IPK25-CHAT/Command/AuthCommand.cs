@@ -11,7 +11,7 @@ public class AuthCommand(string username, string secret, string displayName) : C
     /// <summary>
     /// Regular expression for the AUTH command.
     /// </summary>
-    public const string Format = @$"^/auth\s+{ParameterFormats.USERNAME}\s+{ParameterFormats.SECRET}\s+{ParameterFormats.DISPLAY_NAME}$";
+    public const string Format = @$"^/auth\s+{ParameterFormats.USERNAME}\s+{ParameterFormats.SECRET}\s+{ParameterFormats.DISPLAY_NAME}$"; // todo
 
     /// <summary>
     /// Username of the, well, user.

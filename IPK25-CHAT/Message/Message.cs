@@ -2,6 +2,7 @@
 
 namespace IPK_25_CHAT.Message;
 
+using System.Text.RegularExpressions;
 using IPK_25_CHAT.Enum;
 using IPK_25_CHAT.Interface;
 
@@ -34,9 +35,43 @@ public abstract class Message(MessageType type) : IReadable
     /// <param name="message">Message string.</param>
     /// <param name="result">Variable to store the result, if parsed successfully.</param>
     /// <returns>True if parsed successfully, else it returns False.</returns>
-    public static bool Parse(string message, out Message result)
+    public static bool Parse(string message, out Message? result)
     {
-        throw new NotImplementedException();
+        // Check individual message types
+        if(Regex.IsMatch(message, ByeMessage.Format))
+        {
+            string[] bye_split = Regex.Split(message, @"\s+");
+            result = new ByeMessage(bye_split[2]);
+            return true;
+        }
+
+        // ERR FROM DNAME IS CONTENT
+        else if(Regex.IsMatch(message, ErrMessage.Format))
+        {
+            string[] err_split = Regex.Split(message, @"\s+");
+            result = new ErrMessage(err_split[2], err_split[4]);
+            return true;
+        }
+
+        // MSG FROM DNAME IS CONTENT
+        else if(Regex.IsMatch(message, MsgMessage.Format))
+        {
+            string[] msg_split = Regex.Split(message, @"\s+");
+            result = new MsgMessage(msg_split[2], msg_split[4]);
+            return true;
+        }
+
+        // REPLY (OK|NOK) IS CONTENT
+        else if(Regex.IsMatch(message, ReplyMessage.Format))
+        {
+            string[] reply_split = Regex.Split(message, @"\s+");
+            result = new ReplyMessage(reply_split[1] == "OK", reply_split[3]);
+            return true;
+        }
+
+        // No match found
+        result = null;
+        return false;
     }
 
     /// <summary>
