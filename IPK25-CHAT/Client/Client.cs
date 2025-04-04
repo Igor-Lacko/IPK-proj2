@@ -8,6 +8,7 @@ using IPK_25_CHAT.Command;
 using IPK_25_CHAT.Message;
 using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Enum;
+using IPK25_CHAT.IO;
 
 
 /// <summary>
@@ -56,14 +57,19 @@ public abstract class Client
     protected readonly InputQueue<string?> UserInputQueue = new();
 
     /// <summary>
-    /// Queue of server inputs. Might not be needed? TODO.
+    /// Stores the current message from the server.
     /// </summary>
-    protected readonly InputQueue<Message> ServerInputQueue = new();
+    protected readonly ServerInputStorage MessageStorage = new();
 
     /// <summary>
     /// Validator for user input.
     /// </summary>
     protected readonly UserInputValidator InputValidator;
+
+    /// <summary>
+    /// Currently received message from the server.
+    /// </summary>
+    protected Message? ReceivedMessage = null;
 
     /// <summary>
     /// Constructor. Sets the host and port.
@@ -80,7 +86,7 @@ public abstract class Client
 
         // Subscribe to events
         InputReader.UserInputReceived += OnUserInputReceived;
-        ServerCommunicator.MessageReceived += OnServerInputReceived;
+        ServerCommunicator.MessageReceived += MessageStorage.OnMessageReceived;
 
         // Don't immediately stop running
         Console.CancelKeyPress += (sender, e) => {  e.Cancel = true; UserInputQueue.Enqueue(null); };
@@ -184,12 +190,6 @@ public abstract class Client
     private void OnUserInputReceived(string? input) => UserInputQueue.Enqueue(input);
 
     /// <summary>
-    /// Called after the MessageReceived event is raised in the ServerCommunicator class.
-    /// Enqueues the given message.
-    /// </summary>
-    private void OnServerInputReceived(Message message) => ServerInputQueue.Enqueue(message);
-
-    /// <summary>
     /// Called to check if a message from the server is terminating the connection.
     /// </summary>
     /// <param name="message">Message received.</param>
@@ -285,7 +285,7 @@ public abstract class Client
 
         // Tasks for user/server input
         Task<string?> userInputTask = UserInputQueue.Dequeue(readInputCancel.Token);
-        Task<Message> serverInputTask = ServerInputQueue.Dequeue(readInputCancel.Token);
+        Task<Message> serverInputTask = MessageStorage.WaitForInput(readInputCancel.Token);
 
         // Wait for either task to finish
         Task finishedTask = await Task.WhenAny(userInputTask, serverInputTask);

@@ -121,7 +121,7 @@ public class TCPClient : Client
     protected override async Task AuthState()
     {
         // Wait for a message from the server
-        Message message = await ServerInputQueue.Dequeue();
+        Message message = await MessageStorage.WaitForInput(CancellationToken.None);
 
         // Decide based on the type
         if(TerminatingMessageReceived(message))
@@ -161,7 +161,7 @@ public class TCPClient : Client
             using var cts = new CancellationTokenSource();
 
             // Wait for a message from the server or user input
-            Task<Message> serverInputTask = ServerInputQueue.Dequeue(cts.Token);
+            Task<Message> serverInputTask = MessageStorage.WaitForInput(cts.Token);
             Task<string?> userInputTask = UserInputQueue.Dequeue(cts.Token);
 
             // Wait for the first task to complete
@@ -212,7 +212,7 @@ public class TCPClient : Client
         while(ClientState == State.JOIN)
         {
             // Wait for server input
-            Message message = await ServerInputQueue.Dequeue();
+            Message message = await MessageStorage.WaitForInput(CancellationToken.None);
 
             // Check if the message is a terminating message
             if(TerminatingMessageReceived(message))
