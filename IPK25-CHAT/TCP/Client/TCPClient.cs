@@ -56,12 +56,12 @@ public class TCPClient : Client
     protected override void ExecuteAuthCommand(AuthCommand command)
     {
         // Set user parameters
-        Config.Username = command.Username;
-        Config.DisplayName = command.DisplayName;
+        UpdateUsername(command.Username);
+        UpdateDisplayName(command.DisplayName);
 
         // Send the AUTH message to the server
         ServerCommunicator.SendMessage(new AuthMessage(command));
-        ClientState = State.AUTH;
+        UpdateState(State.AUTH);
     }
 
     /// <summary>
@@ -71,7 +71,7 @@ public class TCPClient : Client
     protected override void ExecuteJoinCommand(JoinCommand command)
     {
         ServerCommunicator.SendMessage(new JoinMessage(Config.DisplayName!, command.ChannelId));
-        ClientState = State.JOIN;
+        UpdateState(State.JOIN);
     }
 
     /// <summary>
@@ -85,7 +85,7 @@ public class TCPClient : Client
         if(!message.IsValid(ClientState))
         {
             ServerCommunicator.SendMessage(new ErrMessage(Config.DisplayName!, $"Invalid message {message} in state {ClientState}"));
-            ClientState = State.END;
+            UpdateState(State.END);
             return true;
         }
 
@@ -95,12 +95,12 @@ public class TCPClient : Client
             // Print the message and go to END
             case MessageType.ERR:
                 StdoutResultWriter.PrintErrMessage((ErrMessage)message);
-                ClientState = State.END;
+                UpdateState(State.END);
                 return true;
 
             // Go to END
             case MessageType.BYE:
-                ClientState = State.END;
+                UpdateState(State.END);
                 return true;
 
             // Print a local error and terminate
@@ -135,31 +135,17 @@ public class TCPClient : Client
             // Go to OPEN or stay
             if(((ReplyMessage)message).OK)
             {
-                ClientState = State.OPEN;
+                UpdateState(State.OPEN);
                 return;
             }
 
             // START is basically AUTH when waiting for the user/server
             else
             {
-                ClientState = State.START;
+                UpdateState(State.START);
                 return;
             }
         }
-    }
-
-    /// <summary>
-    /// Handles the END state.
-    /// </summary>
-    protected override void EndState()
-    {
-        GracefulTermination();
-        Environment.Exit(0);
-    }
-
-    protected override Task JoinState()
-    {
-        throw new NotImplementedException();
     }
 
     /// <summary>
@@ -198,7 +184,7 @@ public class TCPClient : Client
                 }
             }
 
-            // User input came first --> either a message, or a valid command (rename/join/help)
+            // User input came first --> either a message, or a valid command (basically all except auth)
             else
             {
                 // Check for EOF
@@ -215,6 +201,22 @@ public class TCPClient : Client
             }
         }
     }
+
+    /// <summary>
+    /// Handles the END state.
+    /// </summary>
+    protected override void EndState()
+    {
+        GracefulTermination();
+        Environment.Exit(0);
+    }
+
+    protected override Task JoinState()
+    {
+        throw new NotImplementedException();
+    }
+
+
 
     /// <summary>
     /// Triggered on the error states of the client.

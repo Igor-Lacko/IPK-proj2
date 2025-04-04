@@ -23,15 +23,7 @@ public abstract class Client
     /// <summary>
     /// Client's current state.
     /// </summary>
-    protected State ClientState
-    {
-        get => _state;
-        set
-        {
-            _state = value;
-            InputValidator.ClientState = value;
-        }
-    }
+    protected State ClientState = State.START;
 
     /// <summary>
     /// IP address of the server.
@@ -44,22 +36,9 @@ public abstract class Client
     protected ushort Port;
 
     /// <summary>
-    /// Field to allow non-recursive setting.
-    /// </summary>
-    protected UserSessionConfiguration _config = new();
-
-    /// <summary>
     /// Current session settings (username, etc.).
     /// </summary>
-    protected UserSessionConfiguration Config
-    {
-        get => _config;
-        set
-        {
-            _config = value;
-            InputValidator.Config = value;
-        }
-    }
+    protected UserSessionConfiguration Config = new();
 
     /// <summary>
     /// Throws events subscribed to by the client on receiving user input.
@@ -117,6 +96,57 @@ public abstract class Client
             ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
         GracefulTermination();
         Environment.Exit(0);
+    }
+
+    /// <summary>
+    /// Updates the client state in the client and the validator.
+    /// </summary>
+    /// <param name="state">New state.</param>
+    protected void UpdateState(State state)
+    {
+        // Set the state
+        ClientState = state;
+
+        // Update the validator
+        InputValidator.ClientState = state;
+    }
+
+    /// <summary>
+    /// Updates the username in the client and the validator.
+    /// </summary>
+    /// <param name="username">New username.</param>
+    protected void UpdateUsername(string username)
+    {
+        // Set the username
+        Config.Username = username;
+
+        // Update the validator
+        InputValidator.Config.Username = username;
+    }
+
+    /// <summary>
+    /// Updates the display name in the client and the validator.
+    /// </summary>
+    /// <param name="displayName">New display name.</param>
+    protected void UpdateDisplayName(string displayName)
+    {
+        // Set the display name
+        Config.DisplayName = displayName;
+
+        // Update the validator
+        InputValidator.Config.DisplayName = displayName;
+    }
+
+    /// <summary>
+    /// Updates the channel ID in the client and the validator.
+    /// </summary>
+    protected void UpdateChannelID(string channelID)
+    {
+        // Set the channel ID
+        Config.ChannelID = channelID;
+
+        // Update the validator
+        InputValidator.Config.ChannelID = channelID;
     }
 
     /// <summary>
@@ -182,7 +212,7 @@ public abstract class Client
                 break;
 
             case CommandType.RENAME:
-                Config.DisplayName = ((RenameCommand)command).DisplayName;
+                UpdateDisplayName(((RenameCommand)command).DisplayName);
                 break;
 
             case CommandType.JOIN:
@@ -271,7 +301,7 @@ public abstract class Client
 
             else if(message.Type == MessageType.ERR || message.Type == MessageType.BYE)
             {
-                ClientState = State.END;
+                UpdateState(State.END);
                 return;
             }
 
