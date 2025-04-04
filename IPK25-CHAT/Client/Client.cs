@@ -92,7 +92,7 @@ public abstract class Client
     /// </summary>
     protected void OnEofReceived()
     {
-        if (ClientState != State.END && ClientState != State.START)
+        if (ClientState != State.END)
             ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
         GracefulTermination();
         Environment.Exit(0);
@@ -217,6 +217,10 @@ public abstract class Client
 
             case CommandType.JOIN:
                 ExecuteJoinCommand((JoinCommand)command);
+                break;
+
+            case CommandType.STATUS:
+                StatusCommand.PrintStatus(Config, Port, Host, ClientState);
                 break;
         }
     }

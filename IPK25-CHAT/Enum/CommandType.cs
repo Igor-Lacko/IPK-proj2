@@ -28,5 +28,10 @@ public enum CommandType
     /// <summary>
     /// Show all suppoorted commands.
     /// </summary>
-    HELP
+    HELP,
+
+    /// <summary>
+    /// Show the user status.
+    /// </summary>
+    STATUS,
 }

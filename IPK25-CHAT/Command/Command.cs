@@ -85,6 +85,13 @@ public abstract class Command(CommandType type, string textualRepresentation) : 
             return true;
         }
 
+        // /status
+        else if (Regex.IsMatch(command, StatusCommand.Format))
+        {
+            result = new StatusCommand();
+            return true;
+        }
+
         else
         {
             // Default case
