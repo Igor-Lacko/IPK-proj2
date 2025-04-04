@@ -140,6 +140,7 @@ public abstract class Client
     /// <summary>
     /// Updates the channel ID in the client and the validator.
     /// </summary>
+    /// <param name="channelID">New channel ID.</param>
     protected void UpdateChannelID(string channelID)
     {
         // Set the channel ID
@@ -147,6 +148,19 @@ public abstract class Client
 
         // Update the validator
         InputValidator.Config.ChannelID = channelID;
+    }
+
+    /// <summary>
+    /// Updates the requested channel ID in the client and the validator.
+    /// </summary>
+    /// <param name="channelID">New requested channel ID.</param>
+    protected void UpdateRequestedChannelID(string? channelID)
+    {
+        // Set the requested channel ID
+        Config.RequestedChannelID = channelID;
+
+        // Update the validator
+        InputValidator.Config.RequestedChannelID = channelID;
     }
 
     /// <summary>

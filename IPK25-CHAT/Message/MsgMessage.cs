@@ -51,7 +51,7 @@ public class MsgMessage : Message
     /// </summary>
     /// <param name="clientState">Current state of the client.</param>
     /// <returns>True if the message is valid, else false.</returns>
-    public override bool IsValid(State clientState) => clientState == State.OPEN;
+    public override bool IsValid(State clientState) => clientState == State.OPEN || clientState == State.JOIN;
 
     /// <summary>
     /// Converts the message to a byte array.

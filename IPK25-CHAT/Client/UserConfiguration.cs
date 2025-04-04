@@ -21,4 +21,9 @@ public class UserSessionConfiguration(string? username = null, string? displayNa
     /// ID of the chat channel.
     /// </summary>
     public string? ChannelID = channelID;
+
+    /// <summary>
+    /// ID of the channel that the user has requested to join.
+    /// </summary>
+    public string? RequestedChannelID = null;
 }

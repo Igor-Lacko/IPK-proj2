@@ -71,6 +71,7 @@ public class TCPClient : Client
     protected override void ExecuteJoinCommand(JoinCommand command)
     {
         ServerCommunicator.SendMessage(new JoinMessage(Config.DisplayName!, command.ChannelId));
+        UpdateRequestedChannelID(command.ChannelId);
         UpdateState(State.JOIN);
     }
 
@@ -203,6 +204,48 @@ public class TCPClient : Client
     }
 
     /// <summary>
+    /// Handles the JOIN state. Waits for a reply from the server, while printing any incoming messages.
+    /// </summary>
+    protected override async Task JoinState()
+    {
+        // Until something triggers a state change
+        while(ClientState == State.JOIN)
+        {
+            // Wait for server input
+            Message message = await ServerInputQueue.Dequeue();
+
+            // Check if the message is a terminating message
+            if(TerminatingMessageReceived(message))
+                return;
+
+            // Reply or a normal message
+
+            // Normal message
+            else if(message.Type == MessageType.MSG)
+            {
+                // Print the message
+                StdoutResultWriter.PrintMsgMessage((MsgMessage)message);
+                continue;
+            }
+
+            // Reply from the server
+            else
+            {
+                ReplyMessage reply = (ReplyMessage)message;
+                StdoutResultWriter.PrintReplyMessage(reply);
+
+                // Change chat channel if the reply is positive
+                if(reply.OK) UpdateChannelID(Config.RequestedChannelID!);
+
+                // Set the requested ID to null, change the client state to OPEN and return
+                UpdateRequestedChannelID(null);
+                UpdateState(State.OPEN);
+                return;
+            }
+        }
+    }
+
+    /// <summary>
     /// Handles the END state.
     /// </summary>
     protected override void EndState()
@@ -210,13 +253,6 @@ public class TCPClient : Client
         GracefulTermination();
         Environment.Exit(0);
     }
-
-    protected override Task JoinState()
-    {
-        throw new NotImplementedException();
-    }
-
-
 
     /// <summary>
     /// Triggered on the error states of the client.
