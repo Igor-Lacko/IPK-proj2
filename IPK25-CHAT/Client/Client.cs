@@ -310,25 +310,9 @@ public abstract class Client
             // Get the server input
             Message message = serverInputTask.Result;
 
-            // Local client error, terminate connection and the application
-            if(message.Type == MessageType.MALFORMED)
-            {
-                StdoutResultWriter.InternalClientError(((MalformedMessage)message).MessageContent);
-                ErrorExit(false, null, false);
-            }
-
-            else if(message.Type == MessageType.ERR || message.Type == MessageType.BYE)
-            {
-                UpdateState(State.END);
+            // Check if the message is terminating, basically all messages are terminating in this state
+            if(TerminatingMessageReceived(message))
                 return;
-            }
-
-            // Again, local client error, terminate connection and the application
-            else
-            {
-                StdoutResultWriter.InternalClientError(message.ToString());
-                ErrorExit(false, null, false);
-            }
         }
     }
 

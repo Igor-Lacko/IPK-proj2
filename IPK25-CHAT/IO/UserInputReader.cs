@@ -36,7 +36,6 @@ public class UserInputReader()
         {
             // Parsing is done separately
             string? input = Console.ReadLine();
-            Console.WriteLine("Got input: " + input);
             UserInputReceived.Invoke(input);
         }
     });
