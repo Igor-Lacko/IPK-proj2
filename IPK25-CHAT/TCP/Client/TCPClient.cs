@@ -162,9 +162,58 @@ public class TCPClient : Client
         throw new NotImplementedException();
     }
 
-    protected override Task OpenState()
+    /// <summary>
+    /// Handles the OPEN state. This is the state where we are connected into a channel and print/send messages.
+    /// </summary>
+    protected override async Task OpenState()
     {
-        throw new NotImplementedException();
+        // Loop while we are receivinf messages
+        while(ClientState == State.OPEN)
+        {
+            // To cancel the non-finished task
+            using var cts = new CancellationTokenSource();
+
+            // Wait for a message from the server or user input
+            Task<Message> serverInputTask = ServerInputQueue.Dequeue(cts.Token);
+            Task<string?> userInputTask = UserInputQueue.Dequeue(cts.Token);
+
+            // Wait for the first task to complete
+            Task completedTask = await Task.WhenAny(serverInputTask, userInputTask);
+
+            // Cancel the other task
+            cts.Cancel();
+
+            // Server input came first --> either a message or a terminating message
+            if(completedTask == serverInputTask)
+            {
+                Message message = serverInputTask.Result;
+                if(TerminatingMessageReceived(message))
+                    return;
+
+                // Received MSG
+                else
+                {
+                    StdoutResultWriter.PrintMsgMessage((MsgMessage)message);
+                    continue;
+                }
+            }
+
+            // User input came first --> either a message, or a valid command (rename/join/help)
+            else
+            {
+                // Check for EOF
+                if(userInputTask.Result == null) OnEofReceived();
+
+                // Validate the input
+                IReadable? input = InputValidator.Validate(userInputTask.Result!);
+
+                // Invalid input
+                if(input == null) return;
+
+                // Valid input
+                else RunUserInput(input);
+            }
+        }
     }
 
     /// <summary>
