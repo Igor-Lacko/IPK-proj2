@@ -2,6 +2,7 @@
 
 using System.Net;
 using System.Net.Sockets;
+using IPK_25_CHAT.Command;
 
 namespace IPK_25_CHAT.Arguments;
 
@@ -195,8 +196,20 @@ public static class CommandLineArgumentParser
                     Console.Error.WriteLine($"ERROR: Invalid argument {args[i]}! See ./ipk25chat-client --help for more information.");
                     Environment.Exit(1);
                     break;
-            }
 
+                // Discord command
+                case "-d":
+                    // Already defined case
+                    if(arguments.Discord)
+                    {
+                        Console.Error.WriteLine("ERROR: Discord already set!");
+                        Environment.Exit(1);
+                    }
+
+                    arguments.Discord = true;
+
+                    break;
+            }
         }
 
         // Check needed values
@@ -204,6 +217,9 @@ public static class CommandLineArgumentParser
 
         // Set default values
         arguments = SetDefaultValues(arguments);
+
+        // Set the regex for join if the discord argument is set
+        if(arguments.Discord) JoinCommand.ToggleDiscordNotation();
 
         return arguments;
     }

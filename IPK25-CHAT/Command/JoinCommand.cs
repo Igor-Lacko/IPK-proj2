@@ -13,7 +13,7 @@ public class JoinCommand(string channelId) : Command(CommandType.JOIN, $"/join {
     /// <summary>
     /// Regular expression for the JOIN command.
     /// </summary>
-    public const string Format = @$"^/join\s+{ParameterFormats.CHANNEL_ID}$";
+    public static string Format = @$"^/join\s+{ParameterFormats.CHANNEL_ID}$";
 
     /// <summary>
     /// Channel ID to join.
@@ -25,4 +25,12 @@ public class JoinCommand(string channelId) : Command(CommandType.JOIN, $"/join {
     /// <summary>
     /// <param name="clientState">The current state of the client</param>
     public override bool IsValid(State clientState) => clientState == State.OPEN;
+
+    /// <summary>
+    /// Toggles the format to use the discord notation.
+    /// </summary>
+    public static void ToggleDiscordNotation()
+    {
+        Format = $@"^/join\s+{ParameterFormats.DISCORD_CHANNEL_ID}$";
+    }
 }

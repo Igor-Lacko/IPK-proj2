@@ -24,6 +24,11 @@ public static class ParameterFormats
     public const string CHANNEL_ID = @"[a-zA-Z0-9_-]{1,20}";
 
     /// <summary>
+    /// Regular expression for a channel ID in the discord notation.
+    /// </summary>
+    public const string DISCORD_CHANNEL_ID = @"(discord\.){0,1}[a-zA-Z0-9_-]{1,20}";
+
+    /// <summary>
     /// Regular expression for the displayed name.
     /// </summary>
     public const string DISPLAY_NAME = @"[\x21-\x7e]{1,20}";

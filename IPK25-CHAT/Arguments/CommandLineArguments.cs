@@ -36,6 +36,11 @@ public struct CommandLineArguments
     public byte? Retransmissions;
 
     /// <summary>
+    /// If using the extended notation for channel ids, e.g. discord.CHANNLE_ID
+    /// </summary>
+    public bool Discord;
+
+    /// <summary>
     /// Constructor. Sets all fields to null.
     /// </summary>
     public CommandLineArguments()
@@ -45,5 +50,6 @@ public struct CommandLineArguments
         Port = null;
         Timeout = null;
         Retransmissions = null;
+        Discord = false;
     }
 }
