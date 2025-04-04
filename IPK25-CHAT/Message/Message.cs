@@ -40,32 +40,31 @@ public abstract class Message(MessageType type) : IReadable
         if(message == null)
             return new MalformedMessage(message);
 
+        // All matches
+        Match byeMatch = Regex.Match(message, ByeMessage.Format);
+        Match errMatch = Regex.Match(message, ErrMessage.Format);
+        Match msgMatch = Regex.Match(message, MsgMessage.Format);
+        Match replyMatch = Regex.Match(message, ReplyMessage.Format);
+
         // Check individual message types
-        if(Regex.IsMatch(message, ByeMessage.Format))
-        {
-            string[] bye_split = Regex.Split(message, @"\s+");
-            return new ByeMessage(bye_split[2]);
-        }
+
+        // BYE FROM DNAME
+        if(byeMatch.Success)
+            return new ByeMessage(byeMatch.Groups["DISPLAY_NAME"].Value);
 
         // ERR FROM DNAME IS CONTENT
-        else if(Regex.IsMatch(message, ErrMessage.Format))
-        {
-            string[] err_split = Regex.Split(message, @"\s+");
-            return new ErrMessage(err_split[2], err_split[4]);
-        }
+        else if(errMatch.Success)
+            return new ErrMessage(errMatch.Groups["DISPLAY_NAME"].Value, errMatch.Groups["MESSAGE_CONTENT"].Value);
 
         // MSG FROM DNAME IS CONTENT
-        else if(Regex.IsMatch(message, MsgMessage.Format))
-        {
-            string[] msg_split = Regex.Split(message, @"\s+");
-            return new MsgMessage(msg_split[2], msg_split[4]);
-        }
+        else if(msgMatch.Success)
+            return new MsgMessage(msgMatch.Groups["DISPLAY_NAME"].Value, msgMatch.Groups["MESSAGE_CONTENT"].Value);
 
         // REPLY (OK|NOK) IS CONTENT
-        else if(Regex.IsMatch(message, ReplyMessage.Format))
+        else if(replyMatch.Success)
         {
-            string[] reply_split = Regex.Split(message, @"\s+");
-            return new ReplyMessage(reply_split[1] == "OK", reply_split[3]);
+            bool ok = Regex.Split(message, @"\s+")[1] == "OK";
+            return new ReplyMessage(ok, replyMatch.Groups["MESSAGE_CONTENT"].Value);
         }
 
         // No match found

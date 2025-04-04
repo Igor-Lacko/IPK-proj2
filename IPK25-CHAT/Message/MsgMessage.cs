@@ -12,7 +12,7 @@ public class MsgMessage : Message
     /// <summary>
     /// Regular expression for the textual version of the MSG message.
     /// </summary>
-    public const string Format = @$"^MSG FROM {ParameterFormats.DISPLAY_NAME} IS {ParameterFormats.MESSAGE_CONTENT}$";
+    public const string Format = @$"^MSG FROM (?<DISPLAY_NAME>{ParameterFormats.DISPLAY_NAME}) IS (?<MESSAGE_CONTENT>{ParameterFormats.MESSAGE_CONTENT})$";
 
     /// <summary>
     /// Display name of the user.

@@ -12,7 +12,7 @@ public class ByeMessage : Message
     /// <summary>
     /// Regular expression for the textual version of the BYE message.
     /// </summary>
-    public const string Format = @$"^BYE FROM {ParameterFormats.DISPLAY_NAME}$";
+    public const string Format = @$"^BYE FROM (?<DISPLAY_NAME>{ParameterFormats.DISPLAY_NAME})$";
 
     /// <summary>
     /// Display name of the user.
