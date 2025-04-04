@@ -15,7 +15,7 @@ public class InputQueue<T>
     /// <summary>
     /// Semaphore controling access to the queue.
     /// </summary>
-    private readonly SemaphoreSlim QueueGuardian = new(0, 1);
+    private readonly SemaphoreSlim QueueGuardian = new(0);
 
     /// <summary>
     /// Wrapper on enqueueing input.

@@ -66,8 +66,8 @@ public class TCPServerCommunicator : IServerCommunicator
 
         // Initialize the stream
         TCPStream = new(TCPSocket);
-        TCPReader = new(TCPStream);
-        TCPWriter = new(TCPStream) { AutoFlush = true };
+        TCPReader = new(TCPStream, System.Text.Encoding.ASCII);
+        TCPWriter = new(TCPStream, System.Text.Encoding.ASCII) { AutoFlush = true };
     }
 
     /// <summary>
@@ -80,7 +80,7 @@ public class TCPServerCommunicator : IServerCommunicator
         if (message == null) return;
 
         // Send the message to the server
-        TCPWriter.WriteLine(message.ToString());
+        TCPWriter.Write(message.ToString());
     }
 
     /// <summary>

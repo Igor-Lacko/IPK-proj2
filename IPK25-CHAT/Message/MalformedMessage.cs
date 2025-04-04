@@ -26,11 +26,11 @@ public class MalformedMessage : Message
 
     /// <summary>
     /// Checks if the message is valid in the current client state.
-    /// Always returns false (though this might not be used).
+    /// Always returns true to be handled differently than other messages.
     /// </summary>
     /// <param name="clientState">Current state of the client.</param>
-    /// <returns>False.</returns>
-    public override bool IsValid(State clientState) => false;
+    /// <returns>True.</returns>
+    public override bool IsValid(State clientState) => true;
 
     /// <summary>
     /// Converts the message to a byte array.
