@@ -74,24 +74,62 @@ public class TCPServerCommunicator : IServerCommunicator
     /// Sends a message to the server.
     /// </summary>
     /// <param name="message">Message to send.</param>
-    public void SendMessage(Message message)
+    public async Task SendMessage(Message message)
     {
         // Check if the message is null
         if (message == null) return;
 
         // Send the message to the server
-        TCPWriter.Write(message.ToString());
+        await TCPWriter.WriteAsync(message.ToString());
+    }
+
+    public async Task<string> GetMessage()
+    {
+        List<char> message = [];
+        char[] current = new char[1];
+        int currentIndex = 0;
+
+        // Until \r\n
+        bool done = false;
+
+        while (!done)
+        {
+            // Read one character
+            if(await TCPReader.ReadAsync(current, 0, 1) == 0)
+                break;
+
+            else message.Add(current[0]);
+
+            // If we have reached the end
+            if(current[0] == '\n')
+            {
+                // Check if the last character is \r
+                if (currentIndex != 0 && message[currentIndex - 1] == '\r')
+                    done = true;
+            }
+
+            currentIndex++;
+        }
+
+        // Strip the \r\n from the message
+        if(done)
+        {
+            message.RemoveAt(currentIndex - 1);
+            message.RemoveAt(currentIndex - 2);
+        }
+
+        return new string([.. message]);
     }
 
     /// <summary>
     /// Reads input from the server.
     /// </summary>
-    public void Run() => Task.Run(() =>
+    public void Run() => Task.Run(async () =>
     {
         while (!ServerInputCancellationToken.Token.IsCancellationRequested)
         {
             // Parsing is done separately
-            string? input = TCPReader.ReadLine();
+            string input = await GetMessage();
             Message message = Message.Parse(input);
             MessageReceived.Invoke(message);
         }

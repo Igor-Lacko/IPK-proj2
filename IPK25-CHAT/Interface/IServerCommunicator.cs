@@ -18,7 +18,7 @@ public interface IServerCommunicator
     /// Sends a message to the server.
     /// </summary>
     /// <param name="message">Message to send.</param>
-    public void SendMessage(Message message);
+    public Task SendMessage(Message message);
 
     /// <summary>
     /// Reads input from the server in a loop.
