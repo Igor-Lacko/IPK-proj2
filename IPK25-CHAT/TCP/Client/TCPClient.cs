@@ -85,7 +85,7 @@ public class TCPClient : Client
         // Invalid message for the given state
         if(!message.IsValid(ClientState))
         {
-            ServerCommunicator.SendMessage(new ErrMessage(Config.DisplayName!, $"Invalid message {message} in state {ClientState}"));
+            ServerCommunicator.SendMessage(new ErrMessage(Config.DisplayName!, $"Invalid message type {message.Type} in state {ClientState}"));
             UpdateState(State.END);
             return true;
         }
