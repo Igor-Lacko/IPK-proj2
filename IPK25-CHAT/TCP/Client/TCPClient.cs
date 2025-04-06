@@ -120,8 +120,20 @@ public class TCPClient : Client
     /// </summary>
     protected override async Task AuthState()
     {
-        // Wait for a message from the server
-        Message message = await MessageStorage.WaitForInput(CancellationToken.None);
+        // Wait for a message from the server or a timeout
+        Task TimeoutTask = Task.Delay(5000);
+        Task<Message> ServerInputTask = MessageStorage.WaitForInput(CancellationToken.None);
+        Task completedTask = await Task.WhenAny(ServerInputTask, TimeoutTask);
+
+        // Check if the timeout task completed first
+        if(completedTask == TimeoutTask)
+        {
+            StdoutResultWriter.InternalClientError("Timeout when waiting for reply to authentication");
+            ErrorExit(true, "Timeout when waiting for reply to authentication", true);
+            return;
+        }
+
+        Message message = ServerInputTask.Result;
 
         // Decide based on the type
         if(TerminatingMessageReceived(message))
@@ -211,8 +223,20 @@ public class TCPClient : Client
         // Until something triggers a state change
         while(ClientState == State.JOIN)
         {
-            // Wait for server input
-            Message message = await MessageStorage.WaitForInput(CancellationToken.None);
+            // Wait for server input or a timeout
+            Task TimeoutTask = Task.Delay(5000);
+            Task<Message> ServerInputTask = MessageStorage.WaitForInput(CancellationToken.None);
+            Task completedTask = await Task.WhenAny(ServerInputTask, TimeoutTask);
+
+            // Check if the timeout task completed first
+            if(completedTask == TimeoutTask)
+            {
+                StdoutResultWriter.InternalClientError("Timeout when waiting for reply to join a chat channel");
+                ErrorExit(true, "Timeout when waiting for reply to join a chat channel", true);
+                return;
+            }
+
+            Message message = ServerInputTask.Result;
 
             // Check if the message is a terminating message
             if(TerminatingMessageReceived(message))
