@@ -2,6 +2,8 @@
 
 namespace IPK_25_CHAT.Message;
 
+using System.Net;
+using System.Text;
 using IPK_25_CHAT.Enum;
 
 /// <summary>
@@ -55,11 +57,15 @@ public class MsgMessage : Message
 
     /// <summary>
     /// Converts the message to a byte array.
+    /// |0x04|MessageID|DisplayName|0|MessageContent|0|
     /// </summary>
     /// <returns>Byte array representing the message.</returns>
     public override byte[] AsBytes()
     {
-        throw new NotImplementedException();
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID!));
+        byte[] displayNameBytes = Encoding.ASCII.GetBytes(DisplayName);
+        byte[] messageContentBytes = Encoding.ASCII.GetBytes(MessageContent);
+        return [(byte)MessageType.MSG, .. messageIDBytes, .. displayNameBytes, 0, .. messageContentBytes, 0];
     }
 
     /// <summary>

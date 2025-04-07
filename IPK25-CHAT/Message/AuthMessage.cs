@@ -2,6 +2,8 @@
 
 namespace IPK_25_CHAT.Message;
 
+using System.Net;
+using System.Text;
 using IPK_25_CHAT.Command;
 using IPK_25_CHAT.Enum;
 
@@ -57,11 +59,16 @@ public class AuthMessage : Message
 
     /// <summary>
     /// Converts the message to a byte array.
+    /// |0x02|MESSAGEID|MESSAGEID|USERNAME....|0|DISPLAYNAME....|0|SECRET....|0|
     /// </summary>
     /// <returns>Byte array representing the message.</returns>
     public override byte[] AsBytes()
     {
-        throw new NotImplementedException();
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID!));
+        byte[] usernameBytes = Encoding.ASCII.GetBytes(Username);
+        byte[] displayNameBytes = Encoding.ASCII.GetBytes(DisplayName);
+        byte[] secretBytes = Encoding.ASCII.GetBytes(Secret);
+        return [(byte)MessageType.AUTH, .. messageIDBytes, .. usernameBytes, 0, .. displayNameBytes, 0, .. secretBytes, 0];
     }
 
     /// <summary>

@@ -95,11 +95,11 @@ public abstract class Client
     /// Called when the end of file (EOF) is received, (well actually dequeued).
     /// Also called on CTRL + C (when null is dequeued).
     /// </summary>
-    protected void OnEofReceived()
+    protected async Task OnEofReceived()
     {
         if(ClientState == State.START) Environment.Exit(0);
         else if (ClientState != State.END)
-            ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
+            await ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
         GracefulTermination();
         Environment.Exit(0);
     }
@@ -281,7 +281,7 @@ public abstract class Client
     {
         // Wait for the user to type in a command
         string? input = await UserInputQueue.Dequeue();
-        if(input == null) OnEofReceived();
+        if(input == null) await OnEofReceived();
 
         // Validate the input (all commands except join are valid in this state (and except a message))
         IReadable? validatedInput = InputValidator.Validate(input!);

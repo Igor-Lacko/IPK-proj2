@@ -38,7 +38,7 @@ public class MalformedMessage : Message
     /// <returns>Byte array representation of the message.</returns>
     public override byte[] AsBytes()
     {
-        throw new NotImplementedException();
+        throw new ArgumentException("Malformed message cannot be converted to bytes.");
     }
 
     /// <summary>

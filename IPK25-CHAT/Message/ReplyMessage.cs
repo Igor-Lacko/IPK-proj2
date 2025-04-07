@@ -2,6 +2,8 @@
 
 namespace IPK_25_CHAT.Message;
 
+using System.Net;
+using System.Text;
 using IPK_25_CHAT.Enum;
 
 /// <summary>
@@ -25,14 +27,21 @@ public class ReplyMessage : Message
     public readonly string MessageContent;
 
     /// <summary>
+    /// ID of the message we are replying to. Only used in the UDP variant.
+    /// </summary>
+    public readonly ushort RefMessageID;
+
+    /// <summary>
     /// Textual protocol constructor for REPLY message.
     /// </summary>
     /// <param name="ok">True if the message is a positive reply, false otherwise.</param>
     /// <param name="messageContent">Content of the reply message as a string.</param>
-    public ReplyMessage(bool ok, string messageContent) : base(MessageType.REPLY)
+    /// <param name="refMessageID">Only used in the UDP variant. ID of the message we are replying to.</param>
+    public ReplyMessage(bool ok, string messageContent, ushort refMessageID = 0) : base(MessageType.REPLY)
     {
         OK = ok;
         MessageContent = messageContent;
+        RefMessageID = refMessageID;
     }
 
     /// <summary>
@@ -55,11 +64,16 @@ public class ReplyMessage : Message
 
     /// <summary>
     /// Converts the message to a byte array.
+    /// |0x01|MessageID|OK|RefMessageID|0|MessageContent|0|
     /// </summary>
     /// <returns>Byte array representing the message.</returns>
     public override byte[] AsBytes()
     {
-        throw new NotImplementedException();
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID!));
+        byte ok = (byte)(OK ? 1 : 0);
+        byte[] refMessageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)RefMessageID));
+        byte[] messageContentBytes = Encoding.ASCII.GetBytes(MessageContent);
+        return [(byte)MessageType.REPLY, ok, .. messageIDBytes, .. refMessageIDBytes, 0, .. messageContentBytes, 0];
     }
 
     /// <summary>

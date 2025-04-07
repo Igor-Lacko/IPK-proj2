@@ -2,6 +2,7 @@
 
 namespace IPK_25_CHAT.Message;
 
+using System.Net;
 using IPK_25_CHAT.Enum;
 
 /// <summary>
@@ -33,7 +34,7 @@ public class ConfirmMessage : Message
     /// Converts the message to a byte array.
     /// </summary>
     /// <returns>Byte array representing the message.</returns>
-    public override byte[] AsBytes() => [.. (byte[])[(byte)MessageType.CONFIRM], .. BitConverter.GetBytes((ushort)MessageID!)];
+    public override byte[] AsBytes() => [(byte)MessageType.CONFIRM, .. BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID!))];
 
     /// <summary>
     /// Throws an exception as the CONFIRM message is not used in textual form.
