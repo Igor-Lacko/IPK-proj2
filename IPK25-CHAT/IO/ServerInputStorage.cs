@@ -1,8 +1,8 @@
 /* This class stores the incoming inputs from the server */
 
-using IPK_25_CHAT.Message;
+namespace IPK_25_CHAT.IO;
 
-namespace IPK25_CHAT.IO;
+using IPK_25_CHAT.Message;
 
 public class ServerInputStorage
 {

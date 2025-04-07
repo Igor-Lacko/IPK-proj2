@@ -3,6 +3,7 @@
 namespace IPK_25_CHAT.TCP.IO;
 
 using IPK_25_CHAT.Interface;
+using IPK_25_CHAT.IO;
 using IPK_25_CHAT.Message;
 using System.Net;
 using System.Net.Sockets;
@@ -11,27 +12,42 @@ using System.Net.Sockets;
 /// Class for communication with the server via TCP.
 /// Uses a network stream and text based messages.
 /// </summary>
-public class TCPServerCommunicator : IServerCommunicator
+/// <remarks>
+/// Constructor for TCPServerCommunicator.
+/// </remarks>
+/// <param name="host">IP address of the host.</param>
+/// <param name="port">The host port to be connected to.</param>
+public class TCPServerCommunicator(IPAddress host, ushort port) : IServerCommunicator
 {
     /// <summary>
     /// Socket of type (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp).
     /// </summary>
-    private readonly Socket TCPSocket;
+    private Socket? TCPSocket;
 
     /// <summary>
     /// NetworkStream object for reading and writing data.
     /// </summary>
-    private readonly NetworkStream TCPStream;
+    private NetworkStream? TCPStream = null;
 
     /// <summary>
     /// StreamReader object for reading data from the network stream.
     /// </summary>
-    private readonly StreamReader TCPReader;
+    private StreamReader? TCPReader = null;
 
     /// <summary>
     /// StreamWriter object for writing data to the network stream.
     /// </summary>
-    private readonly StreamWriter TCPWriter;
+    private StreamWriter? TCPWriter = null;
+
+    /// <summary>
+    /// IP address of the host.
+    /// </summary>
+    private readonly IPAddress Host = host;
+
+    /// <summary>
+    /// Port of the host.
+    /// </summary>
+    private readonly ushort Port = port;
 
     /// <summary>
     /// Event thrown when a message is received from the server when receiving in a loop.
@@ -44,23 +60,23 @@ public class TCPServerCommunicator : IServerCommunicator
     public CancellationTokenSource ServerInputCancellationToken { get; } = new();
 
     /// <summary>
-    /// Constructor for TCPServerCommunicator.
+    /// Opens connection to the server.
     /// </summary>
-    /// <param name="host">IP address of the host.</param>
-    /// <param name="port">The host port to be connected to.</param>
-    public TCPServerCommunicator(IPAddress host, ushort port)
+    /// <throws>SocketException if the connection fails.</throws>
+    public void Initialize()
     {
+        // Create the socket
         TCPSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
         // Try to connect
         try
         {
-            TCPSocket.Connect(host, port);
+            TCPSocket.Connect(Host, Port);
         }
 
         catch (SocketException e)
         {
-            Console.WriteLine($"ERROR: Connection unsuccessful: {e.Message}");
+            StdoutResultWriter.InternalClientError($"Could not connect to the server: {e.Message}");
             Environment.Exit(1);
         }
 
@@ -74,15 +90,12 @@ public class TCPServerCommunicator : IServerCommunicator
     /// Sends a message to the server.
     /// </summary>
     /// <param name="message">Message to send.</param>
-    public async Task SendMessage(Message message)
-    {
-        // Check if the message is null
-        if (message == null) return;
+    public async Task SendMessage(Message message) => await TCPWriter!.WriteAsync(message.ToString());
 
-        // Send the message to the server
-        await TCPWriter.WriteAsync(message.ToString());
-    }
-
+    /// <summary>
+    /// Reads one message from the server.
+    /// </summary>
+    /// <returns>String representing the message.</returns>
     public async Task<string> GetMessage()
     {
         List<char> message = [];
@@ -95,7 +108,9 @@ public class TCPServerCommunicator : IServerCommunicator
         while (!done)
         {
             // Read one character
-            if(await TCPReader.ReadAsync(current, 0, 1) == 0)
+            int bytesRead = await TCPReader!.ReadAsync(current, 0, 1);
+
+            if (bytesRead == 0)
                 break;
 
             else message.Add(current[0]);
@@ -141,10 +156,10 @@ public class TCPServerCommunicator : IServerCommunicator
     public void Close()
     {
         ServerInputCancellationToken.Cancel();
-        TCPWriter.Close();
-        TCPReader.Close();
-        TCPStream.Close();
-        TCPSocket.Shutdown(SocketShutdown.Both);
+        TCPWriter!.Close();
+        TCPReader!.Close();
+        TCPStream!.Close();
+        TCPSocket!.Shutdown(SocketShutdown.Both);
         TCPSocket.Close();
     }
 }

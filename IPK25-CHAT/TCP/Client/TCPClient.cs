@@ -53,14 +53,21 @@ public class TCPClient : Client
     /// Executes the AUTH command.
     /// </summary>
     /// <param name="command">Command to execute.</param>
-    protected override void ExecuteAuthCommand(AuthCommand command)
+    protected override async Task ExecuteAuthCommand(AuthCommand command)
     {
         // Set user parameters
         UpdateUsername(command.Username);
         UpdateDisplayName(command.DisplayName);
 
+        // Open connection if not done already
+        if(ClientState == State.START)
+        {
+            ServerCommunicator.Initialize();
+            ServerCommunicator.Run();
+        }
+
         // Send the AUTH message to the server
-        ServerCommunicator.SendMessage(new AuthMessage(command));
+        await ServerCommunicator.SendMessage(new AuthMessage(command));
         UpdateState(State.AUTH);
     }
 
@@ -68,9 +75,9 @@ public class TCPClient : Client
     /// Executes the JOIN command.
     /// </summary>
     /// <param name="command">Command to execute.</param>
-    protected override void ExecuteJoinCommand(JoinCommand command)
+    protected override async Task ExecuteJoinCommand(JoinCommand command)
     {
-        ServerCommunicator.SendMessage(new JoinMessage(Config.DisplayName!, command.ChannelId));
+        await ServerCommunicator.SendMessage(new JoinMessage(Config.DisplayName!, command.ChannelId));
         UpdateRequestedChannelID(command.ChannelId);
         UpdateState(State.JOIN);
     }
@@ -80,15 +87,11 @@ public class TCPClient : Client
     /// Also checks for ERR/BYE and MALFORMED messages.
     /// </summary>
     /// <param name="message">The message received.</param>
-    protected override bool TerminatingMessageReceived(Message message)
+    protected override async Task<bool> TerminatingMessageReceived(Message message)
     {
         // Invalid message for the given state
         if(!message.IsValid(ClientState))
-        {
-            ServerCommunicator.SendMessage(new ErrMessage(Config.DisplayName!, $"Invalid message type {message.Type} in state {ClientState}"));
-            UpdateState(State.END);
-            return true;
-        }
+            await ErrorExit(true, $"Invalid message type {message.Type} in state {ClientState}", true);
 
         // Maybe ERR/BYE/MALFORMED
         switch(message.Type)
@@ -96,7 +99,7 @@ public class TCPClient : Client
             // Print the message and go to END
             case MessageType.ERR:
                 StdoutResultWriter.PrintErrMessage((ErrMessage)message);
-                UpdateState(State.END);
+                await ErrorExit(false, null, true);
                 return true;
 
             // Go to END
@@ -107,7 +110,7 @@ public class TCPClient : Client
             // Print a local error and terminate
             case MessageType.MALFORMED:
                 StdoutResultWriter.InternalClientError(((MalformedMessage)message).MessageContent);
-                ErrorExit(true, "Malformed message received", true);
+                await ErrorExit(true, "Malformed message received", true);
                 return true;
         }
 
@@ -129,36 +132,71 @@ public class TCPClient : Client
         if(completedTask == TimeoutTask)
         {
             StdoutResultWriter.InternalClientError("Timeout when waiting for reply to authentication");
-            ErrorExit(true, "Timeout when waiting for reply to authentication", true);
+            await ErrorExit(true, "Timeout when waiting for reply to authentication", true);
             return;
         }
 
-        Message message = ServerInputTask.Result;
+        Message reply = ServerInputTask.Result;
 
         // Decide based on the type
-        if(TerminatingMessageReceived(message))
+        if(await TerminatingMessageReceived(reply))
             return;
 
         // Check if the server replied with a positive or negative reply
-        else if(message.Type == MessageType.REPLY)
+        else if(reply.Type == MessageType.REPLY)
         {
             // Print the result
-            StdoutResultWriter.PrintReplyMessage((ReplyMessage)message);
+            StdoutResultWriter.PrintReplyMessage((ReplyMessage)reply);
 
             // Go to OPEN or stay
-            if(((ReplyMessage)message).OK)
+            if(((ReplyMessage)reply).OK)
             {
                 UpdateState(State.OPEN);
                 return;
             }
-
-            // START is basically AUTH when waiting for the user/server
-            else
-            {
-                UpdateState(State.START);
-                return;
-            }
         }
+
+        // If the server didn't reply, wait for a user command again (or a message from the server, but that would result in an error)
+
+        // Cancellation token source to only wait for one task
+        using var readInputCancel = new CancellationTokenSource();
+
+        // Tasks for user/server input
+        Task<string?> userInputTask = UserInputQueue.Dequeue(readInputCancel.Token);
+        Task<Message> serverInputTask = MessageStorage.WaitForInput(readInputCancel.Token);
+
+        // Wait for either task to finish
+        Task finishedTask = await Task.WhenAny(userInputTask, serverInputTask);
+
+        // Cancel the other task
+        readInputCancel.Cancel();
+
+        // Check which task finished
+        if(finishedTask == userInputTask)
+        {
+            // EOF or CTRL + C
+            if(userInputTask.Result == null) OnEofReceived();
+
+            // Get the user input
+            IReadable? input = InputValidator.Validate(userInputTask.Result!);
+            if(input == null) return;
+            else await RunUserInput(input);
+        }
+
+        else if (finishedTask == serverInputTask)
+        {
+            // Get the server input
+            Message message = serverInputTask.Result;
+
+            // Check if the message is terminating, basically all messages are terminating in this state
+            if(await TerminatingMessageReceived(message))
+                return;
+
+            // Reply is valid in this state, but not when waiting for the user to ask for authentication
+            else if(message.Type == MessageType.REPLY)
+                await ErrorExit(true, "Reply message received when not waiting for it!", true);
+        }
+
     }
 
     /// <summary>
@@ -186,7 +224,7 @@ public class TCPClient : Client
             if(completedTask == serverInputTask)
             {
                 Message message = serverInputTask.Result;
-                if(TerminatingMessageReceived(message))
+                if(await TerminatingMessageReceived(message))
                     return;
 
                 // Received MSG
@@ -210,7 +248,7 @@ public class TCPClient : Client
                 if(input == null) return;
 
                 // Valid input
-                else RunUserInput(input);
+                else await RunUserInput(input);
             }
         }
     }
@@ -232,14 +270,14 @@ public class TCPClient : Client
             if(completedTask == TimeoutTask)
             {
                 StdoutResultWriter.InternalClientError("Timeout when waiting for reply to join a chat channel");
-                ErrorExit(true, "Timeout when waiting for reply to join a chat channel", true);
+                await ErrorExit(true, "Timeout when waiting for reply to join a chat channel", true);
                 return;
             }
 
             Message message = ServerInputTask.Result;
 
             // Check if the message is a terminating message
-            if(TerminatingMessageReceived(message))
+            if(await TerminatingMessageReceived(message))
                 return;
 
             // Reply or a normal message
@@ -288,16 +326,16 @@ public class TCPClient : Client
     /// <param name="errorMessage">Error mesxsage.</param>
     /// <param name="terminateConnection">Whether to terminate the connection.</param>
     /// <param name="exitCode">Exit code.</param>
-    protected override void ErrorExit(bool sendErrorMessage = false, string? errorMessage = null, bool terminateConnection = false, int exitCode = 1)
+    protected override async Task ErrorExit(bool sendErrorMessage = false, string? errorMessage = null, bool terminateConnection = false, int exitCode = 1)
     {
         if(sendErrorMessage)
         {
             if(errorMessage == null) throw new ArgumentException("prosim igino oprav si kod");
-            ServerCommunicator.SendMessage(new ErrMessage(Config.DisplayName!, errorMessage));
+            await ServerCommunicator.SendMessage(new ErrMessage(Config.DisplayName!, errorMessage));
         }
 
         if(terminateConnection)
-            ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
+            await ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
 
         GracefulTermination();
 

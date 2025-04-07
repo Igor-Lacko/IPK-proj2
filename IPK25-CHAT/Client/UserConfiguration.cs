@@ -15,7 +15,7 @@ public class UserSessionConfiguration(string? username = null, string? displayNa
     /// <summary>
     /// Name that is displayed to other users.
     /// </summary>
-    public string? DisplayName = displayName;
+    public string DisplayName = displayName ?? "Unknown";
 
     /// <summary>
     /// ID of the chat channel.

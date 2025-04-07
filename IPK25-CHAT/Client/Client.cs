@@ -8,7 +8,6 @@ using IPK_25_CHAT.Command;
 using IPK_25_CHAT.Message;
 using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Enum;
-using IPK25_CHAT.IO;
 
 
 /// <summary>
@@ -98,7 +97,8 @@ public abstract class Client
     /// </summary>
     protected void OnEofReceived()
     {
-        if (ClientState != State.END)
+        if(ClientState == State.START) Environment.Exit(0);
+        else if (ClientState != State.END)
             ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
         GracefulTermination();
         Environment.Exit(0);
@@ -173,13 +173,13 @@ public abstract class Client
     /// Sends a message or executes a command.
     /// </summary>
     /// <param name="input">Message or command.</param>
-    protected void RunUserInput(IReadable input)
+    protected async Task RunUserInput(IReadable input)
     {
         if(input is Command command)
-            ExecuteCommand(command);
+            await ExecuteCommand(command);
 
         else if(input is Message message)
-            ServerCommunicator.SendMessage(message);
+            await ServerCommunicator.SendMessage(message);
     }
 
     /// <summary>
@@ -194,31 +194,31 @@ public abstract class Client
     /// </summary>
     /// <param name="message">Message received.</param>
     /// <returns>True if the message is terminating, false otherwise.</returns>
-    protected abstract bool TerminatingMessageReceived(Message message);
+    protected abstract Task TerminatingMessageReceived(Message message);
 
     /// <summary>
     /// Executes the given AUTH command.
     /// </summary>
     /// <param name="command">AUTH command with parameters.</param>
-    protected abstract void ExecuteAuthCommand(AuthCommand command);
+    protected abstract Task ExecuteAuthCommand(AuthCommand command);
 
     /// <summary>
     /// Executes the given JOIN command.
     /// </summary>
     /// <param name="command">JOIN command with parameters.</param>
-    protected abstract void ExecuteJoinCommand(JoinCommand command);
+    protected abstract Task ExecuteJoinCommand(JoinCommand command);
 
     /// <summary>
     /// Executes the given command.
     /// </summary>
     /// <param name="command">Command to execute.</param>
-    protected void ExecuteCommand(Command command)
+    protected async Task ExecuteCommand(Command command)
     {
         // Decide based on the type
         switch(command.Type)
         {
             case CommandType.AUTH:
-                ExecuteAuthCommand((AuthCommand)command);
+                await ExecuteAuthCommand((AuthCommand)command);
                 break;
 
             case CommandType.HELP:
@@ -230,7 +230,7 @@ public abstract class Client
                 break;
 
             case CommandType.JOIN:
-                ExecuteJoinCommand((JoinCommand)command);
+                await ExecuteJoinCommand((JoinCommand)command);
                 break;
 
             case CommandType.STATUS:
@@ -247,7 +247,6 @@ public abstract class Client
     {
         // Receive input
         InputReader.Run();
-        ServerCommunicator.Run();
 
         // FSM loop
         do
@@ -280,40 +279,15 @@ public abstract class Client
     /// </summary>
     private async Task StartState()
     {
-        // Cancellation token source to only wait for one task
-        using var readInputCancel = new CancellationTokenSource();
+        // Wait for the user to type in a command
+        string? input = await UserInputQueue.Dequeue();
+        if(input == null) OnEofReceived();
 
-        // Tasks for user/server input
-        Task<string?> userInputTask = UserInputQueue.Dequeue(readInputCancel.Token);
-        Task<Message> serverInputTask = MessageStorage.WaitForInput(readInputCancel.Token);
+        // Validate the input (all commands except join are valid in this state (and except a message))
+        IReadable? validatedInput = InputValidator.Validate(input!);
 
-        // Wait for either task to finish
-        Task finishedTask = await Task.WhenAny(userInputTask, serverInputTask);
-
-        // Cancel the other task
-        readInputCancel.Cancel();
-
-        // Check which task finished
-        if(finishedTask == userInputTask)
-        {
-            // EOF or CTRL + C
-            if(userInputTask.Result == null) OnEofReceived();
-
-            // Get the user input
-            IReadable? input = InputValidator.Validate(userInputTask.Result!);
-            if(input == null) return;
-            else RunUserInput(input);
-        }
-
-        else if (finishedTask == serverInputTask)
-        {
-            // Get the server input
-            Message message = serverInputTask.Result;
-
-            // Check if the message is terminating, basically all messages are terminating in this state
-            if(TerminatingMessageReceived(message))
-                return;
-        }
+        // Run or stay in start
+        if(validatedInput != null) await RunUserInput(validatedInput);
     }
 
     /// <summary>
@@ -358,5 +332,5 @@ public abstract class Client
     /// <param name="errorMessage">Error message.</param>
     /// <param name="terminateConnection">Whether to terminate the connection.</param>
     /// <param name="exitCode">Exit code.</param>
-    protected abstract void ErrorExit(bool sendErrorMessage, string? errorMessage, bool terminateConnection, int exitCode = 1);
+    protected abstract Task ErrorExit(bool sendErrorMessage, string? errorMessage, bool terminateConnection, int exitCode = 1);
 }

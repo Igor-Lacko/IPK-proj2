@@ -36,6 +36,13 @@ public class UserInputReader()
         {
             // Parsing is done separately
             string? input = Console.ReadLine();
+
+            // Truncate messages longer that the TCP allowed maximum
+            if(input != null && input.Length > 60000)
+            {
+                StdoutResultWriter.InternalClientError("Message longer than the maximum allowed length for TCP. Truncating.");
+                input = input[..60000];
+            }
             UserInputReceived.Invoke(input);
         }
     });
