@@ -8,33 +8,48 @@ using IPK_25_CHAT.Enum;
 /// <summary>
 /// Class representing the CONFIRM message. This message is UDP specific, and as such is only used in binary form.
 /// </summary>
-/// <param name="messageID">ID of the message as a ushort.</param>
-public class ConfirmMessage : Message
+/// <param name="messageID">ID of the message that was being comfirmed.</param>
+public class ConfirmMessage(ushort messageID) : Message(MessageType.CONFIRM)
 {
     /// <summary>
-    /// Constructor for the CONFIRM message.
+    /// ID of the message that was being comfirmed.
     /// </summary>
-    /// <param name="MessageID">Message ID as a ushort.</param>
-    public ConfirmMessage(ushort messageID) : base(MessageType.CONFIRM)
-    {
-        MessageID = messageID;
-    }
+    public readonly ushort MessageID = messageID;
 
     /// <summary>
     /// Checks if the message is valid in the current client state.
+    /// Might not even be used for this mesasge type..?
     /// </summary>
     /// <param name="clientState">Current state of the client.</param>
     /// <returns>True if the message is valid, else false.</returns>
-    public override bool IsValid(State clientState)
-    {
-        throw new NotImplementedException();
-    }
+    public override bool IsValid(State clientState) => true;
 
     /// <summary>
     /// Converts the message to a byte array.
     /// </summary>
+    /// <param name="messageID">ID of the message.</param>
     /// <returns>Byte array representing the message.</returns>
-    public override byte[] AsBytes() => [(byte)MessageType.CONFIRM, .. BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID!))];
+    public override byte[] AsBytes(short messageID) => [(byte)MessageType.CONFIRM, .. BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageID))];
+
+    /// <summary>
+    /// Tries to parse a CONFIRM message from a byte array.
+    /// </summary>
+    /// <param name="response">The response received.</param>
+    /// <param name="message">If parsed succesfully, this contains the outgoing CONFIRM message. Else null.</param>
+    /// <returns>True if parsed succesfully, else false.</returns>
+    public static bool TryParse(byte[] response, out ConfirmMessage? message)
+    {
+        // Has to be |0x00|RefMessageID|
+        if(response.Length != 3)
+        {
+            message = null;
+            return false;
+        }
+
+        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 1));
+        message = new ConfirmMessage(messageID);
+        return true;
+    }
 
     /// <summary>
     /// Throws an exception as the CONFIRM message is not used in textual form.

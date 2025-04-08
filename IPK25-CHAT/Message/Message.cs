@@ -2,6 +2,7 @@
 
 namespace IPK_25_CHAT.Message;
 
+using System.Text;
 using System.Text.RegularExpressions;
 using IPK_25_CHAT.Enum;
 using IPK_25_CHAT.Interface;
@@ -16,11 +17,6 @@ public abstract class Message(MessageType type) : IReadable
     /// Message type.
     /// </summary>
     public readonly MessageType Type = type;
-
-    /// <summary>
-    /// ID of the message. UDP specific, so it is nullable.
-    /// </summary>
-    protected ushort? MessageID;
 
     /// <summary>
     /// Checks if the message is valid in the current client state.
@@ -79,12 +75,112 @@ public abstract class Message(MessageType type) : IReadable
     /// <returns>True if parsed successfully, else it returns false.</returns>
     public static bool Parse(byte[] message, out Message result)
     {
-        throw new NotImplementedException();
+        // From the message type
+        // switch(message[0])
+        // {
+        //     case MessageType.BYE:
+        //         result 
+        // }
+        throw new NotImplementedException("Parsing of byte array messages is not implemented yet.");
+    }
+
+    /// <summary>
+    /// Parses the display name from a byte array.
+    /// </summary>
+    /// <param name="message">Array containing the display name.</param>
+    /// <param name="startIndex">The start of the index in the array where we are supposed to look for the display name.</param>
+    /// <param name="success">If we parse the display name successfully (meaning valid characters, length, terminated by zero...)</param>
+    /// <returns>The index AFTER the zero which terminates the display name.</returns>
+    protected static int ParseDisplayName(byte[] message, int startIndex, out bool success, out string? displayName)
+    {
+        // Help variables
+        List<byte> displayNameBytes = [];
+        uint count = 0;
+
+        // Set at start
+        displayName = null;
+
+        // Loop through the section of the array starting at startIndex
+        foreach(byte displayNameByte in message[startIndex..])
+        {
+            // Message end
+            if(displayNameByte == 0) break;
+
+            // Display name too long
+            else if(count++ > 20)
+            {
+                success = false;
+                displayName = "";
+                return 0;
+            }
+
+            // Not a printable character
+            else if(displayNameByte < 0x21 || displayNameByte > 0x7E)
+            {   
+                success = false;
+                displayName = "";
+                return 0;
+            }
+
+            // Add to the display name
+            else displayNameBytes.Add(displayNameByte);
+        }
+
+        // Return the display name converted to a string
+        displayName = Encoding.ASCII.GetString([.. displayNameBytes]);
+        success = true;
+
+        // Start + count + trailing zero
+        return startIndex + displayName.Length + 1;
+    }
+
+    /// <summary>
+    /// Parses the message content parameter from a byte array.
+    /// Does not need to return the index after the message content since it's always at the tail of the message.
+    /// </summary>
+    /// <param name="message">The byte array where to search for the message content.</param>
+    /// <param name="startIndex">Start of the array section to look for the message content.</param>
+    /// <param name="success">If parsed succesfully (not invalid characters/length, terminated by zero...) TODO: max length is not 60000 probably</param>
+    /// <returns>The message content as a string right away (because we don't need to return the index after).</returns>
+    protected static string? ParseMessageContent(byte[] message, int startIndex, out bool success)
+    {
+        // Help variables
+        uint count = 0;
+        List<byte> messageContentBytes = [];
+
+        // Loop until zero byte
+        foreach(byte messageContentByte in message[startIndex..])
+        {
+            // Message end
+            if(messageContentByte == 0) break;
+
+            // Message content too long
+            else if(count++ > 60000)
+            {
+                success = false;
+                return null;
+            }
+
+            // Not a printable character,space or a line feed
+            else if(messageContentByte != 0x0A && (messageContentByte < 0x20 || messageContentByte > 0x7E))
+            {
+                success = false;
+                return null;
+            }
+
+            // Valid
+            else messageContentBytes.Add(messageContentByte);
+        }
+
+        // Convert to string, return
+        success = true;
+        return Encoding.ASCII.GetString([.. messageContentBytes]);
     }
 
     /// <summary>
     /// Converts the message to a byte array.
     /// </summary>
+    /// <param name="messageID">ID of the message as a ushort.</param>
     /// <returns>Byte array representing the message.</returns>
-    public abstract byte[] AsBytes();
+    public abstract byte[] AsBytes(short messageID);
 }

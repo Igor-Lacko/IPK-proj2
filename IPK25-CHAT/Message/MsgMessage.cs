@@ -9,7 +9,9 @@ using IPK_25_CHAT.Enum;
 /// <summary>
 /// Class representing the MSG message.
 /// </summary>
-public class MsgMessage : Message
+/// <param name="displayName">Display name of the user as a string.</param>
+/// <param name="messageContent">Content of the message as a string.</param>
+public class MsgMessage(string displayName, string messageContent) : Message(MessageType.MSG)
 {
     /// <summary>
     /// Regular expression for the textual version of the MSG message.
@@ -19,34 +21,12 @@ public class MsgMessage : Message
     /// <summary>
     /// Display name of the user.
     /// </summary>
-    public readonly string DisplayName;
+    public readonly string DisplayName = displayName;
 
     /// <summary>
     /// Content of the message.
     /// </summary>
-    public readonly string MessageContent;
-
-    /// <summary>
-    /// Textual protocol constructor for MSG message.
-    /// </summary>
-    /// <param name="displayName">Display name of the user as a string.</param>
-    /// <param name="messageContent">Content of the message as a string.</param>
-    public MsgMessage(string displayName, string messageContent) : base(MessageType.MSG)
-    {
-        DisplayName = displayName;
-        MessageContent = messageContent;
-    }
-
-    /// <summary>
-    /// Binary protocol constructor for MSG message.
-    /// </summary>
-    /// <param name="messageID">ID of the message as a ushort.</param>
-    /// <param name="displayName">Display name of the user as a byte array.</param>
-    /// <param name="messageContent">Content of the message as a byte array.</param>
-    public MsgMessage(ushort MessageID, byte[] displayName, byte[] messageContent) : base(MessageType.MSG)
-    {
-        throw new NotImplementedException();
-    }
+    public readonly string MessageContent = messageContent;
 
     /// <summary>
     /// Checks if the message is valid in the current client state.
@@ -59,12 +39,16 @@ public class MsgMessage : Message
     /// Converts the message to a byte array.
     /// |0x04|MessageID|DisplayName|0|MessageContent|0|
     /// </summary>
+    /// <param name="messageID">ID of the message.</param>
     /// <returns>Byte array representing the message.</returns>
-    public override byte[] AsBytes()
+    public override byte[] AsBytes(short messageID)
     {
-        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID!));
+        // Message fields
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageID));
         byte[] displayNameBytes = Encoding.ASCII.GetBytes(DisplayName);
         byte[] messageContentBytes = Encoding.ASCII.GetBytes(MessageContent);
+        
+        // Serialize into a byte array
         return [(byte)MessageType.MSG, .. messageIDBytes, .. displayNameBytes, 0, .. messageContentBytes, 0];
     }
 

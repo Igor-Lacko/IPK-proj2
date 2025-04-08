@@ -7,22 +7,14 @@ using IPK_25_CHAT.Enum;
 /// <summary>
 /// Class for a malformed message.
 /// </summary>
-public class MalformedMessage : Message
+/// <param name="messageContent">Content of the message.</param>
+public class MalformedMessage(string? messageContent) : Message(MessageType.MALFORMED)
 {
     /// <summary>
     /// Message content.
     /// TODO: Byte version maybe?
     /// </summary>
-    public readonly string? MessageContent;
-
-    /// <summary>
-    /// Constructor for the MalformedMessage class.
-    /// </summary>
-    public MalformedMessage(string? messageContent) : base(MessageType.MALFORMED)
-    {
-        MessageID = null;
-        MessageContent = messageContent;
-    }
+    public readonly string? MessageContent = messageContent;
 
     /// <summary>
     /// Checks if the message is valid in the current client state.
@@ -36,7 +28,7 @@ public class MalformedMessage : Message
     /// Converts the message to a byte array.
     /// </summary>
     /// <returns>Byte array representation of the message.</returns>
-    public override byte[] AsBytes()
+    public override byte[] AsBytes(short messageID)
     {
         throw new ArgumentException("Malformed message cannot be converted to bytes.");
     }

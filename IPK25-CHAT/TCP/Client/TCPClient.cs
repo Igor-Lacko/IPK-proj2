@@ -175,7 +175,7 @@ public class TCPClient : Client
         if(finishedTask == userInputTask)
         {
             // EOF or CTRL + C
-            if(userInputTask.Result == null) OnEofReceived();
+            if(userInputTask.Result == null) await OnEofReceived();
 
             // Get the user input
             IReadable? input = InputValidator.Validate(userInputTask.Result!);
@@ -239,7 +239,7 @@ public class TCPClient : Client
             else
             {
                 // Check for EOF
-                if(userInputTask.Result == null) OnEofReceived();
+                if(userInputTask.Result == null) await OnEofReceived();
 
                 // Validate the input
                 IReadable? input = InputValidator.Validate(userInputTask.Result!);

@@ -10,45 +10,23 @@ using IPK_25_CHAT.Enum;
 /// <summary>
 /// Class representing the AUTH message.
 /// </summary>
-public class AuthMessage : Message
+/// <param name="command">Command containing the username, password, and display name.</param>
+public class AuthMessage(AuthCommand command) : Message(MessageType.AUTH)
 {
     /// <summary>
     /// Username of the user.
     /// </summary>
-    private readonly string Username;
+    private readonly string Username = command.Username;
 
     /// <summary>
     /// Password of the user.
     /// </summary>
-    private readonly string Secret;
+    private readonly string Secret = command.Secret;
 
     /// <summary>
     /// User's displayed name.
     /// </summary>
-    private readonly string DisplayName;
-
-    /// <summary>
-    /// Textual protocol constructor for the AUTH message.
-    /// </summary>
-    /// <param name="command">Command containing the username, password, and display name.</param>
-    public AuthMessage(AuthCommand command) : base(MessageType.AUTH)
-    {
-        MessageID = null;
-        Username = command.Username;
-        Secret = command.Secret;
-        DisplayName = command.DisplayName;
-    }
-
-    /// <summary>
-    /// Binary protocol constructor for the AUTH message.
-    /// </summary>
-    /// <param name="MessageID">ID of the message as a ushort.</param>
-    /// <param name="username">Username of the user as a byte array.</param>
-    /// <param name="secret">Password of the user as a byte array.</param>
-    public AuthMessage(ushort MessageID, byte[] username, byte[] secret, byte[] displayName) : base(MessageType.AUTH)
-    {
-        throw new NotImplementedException();
-    }
+    private readonly string DisplayName = command.DisplayName;
 
     /// <summary>
     /// Checks if the message is valid in the current client state.
@@ -61,13 +39,17 @@ public class AuthMessage : Message
     /// Converts the message to a byte array.
     /// |0x02|MESSAGEID|MESSAGEID|USERNAME....|0|DISPLAYNAME....|0|SECRET....|0|
     /// </summary>
+    /// <param name="messageID">ID of the message.</param>
     /// <returns>Byte array representing the message.</returns>
-    public override byte[] AsBytes()
+    public override byte[] AsBytes(short messageID)
     {
-        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID!));
+        // Message fields
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageID));
         byte[] usernameBytes = Encoding.ASCII.GetBytes(Username);
         byte[] displayNameBytes = Encoding.ASCII.GetBytes(DisplayName);
         byte[] secretBytes = Encoding.ASCII.GetBytes(Secret);
+
+        // Serialize into a byte array
         return [(byte)MessageType.AUTH, .. messageIDBytes, .. usernameBytes, 0, .. displayNameBytes, 0, .. secretBytes, 0];
     }
 

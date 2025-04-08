@@ -9,39 +9,19 @@ using IPK_25_CHAT.Enum;
 /// <summary>
 /// Class representing the JOIN message.
 /// </summary>
-public class JoinMessage : Message
+/// <param name="displayName">Display name of the user as a string.</param>
+/// <param name="channelID">ID of the chat channel to be joined as a string.</param>
+public class JoinMessage(string displayName, string channelID) : Message(MessageType.JOIN)
 {
     /// <summary>
     /// Display name of the user.
     /// </summary>
-    private readonly string DisplayName;
+    private readonly string DisplayName = displayName;
 
     /// <summary>
     /// Id of the chat channel to be joined.
     /// </summary>
-    private readonly string ChannelID;
-
-    /// <summary>
-    /// Textual protocol constructor for JOIN message.
-    /// </summary>
-    /// <param name="displayName">Display name of the user as a string.</param>
-    /// <param name="channelID">ID of the chat channel to be joined as a string.</param>
-    public JoinMessage(string displayName, string channelID) : base(MessageType.JOIN)
-    {
-        DisplayName = displayName;
-        ChannelID = channelID;
-    }
-
-    /// <summary>
-    /// Binary protocol constructor for JOIN message.
-    /// </summary>
-    /// <param name="messageID">ID of the message as a ushort.</param>
-    /// <param name="displayName">Display name of the user as a byte array.</param>
-    /// <param name="channelID">ID of the chat channel to be joined as a byte array.</param>
-    public JoinMessage(ushort MessageID, byte[] displayName, byte[] channelID) : base(MessageType.JOIN)
-    {
-        throw new NotImplementedException();
-    }
+    private readonly string ChannelID = channelID;
 
     /// <summary>
     /// Checks if the message is valid in the current client state.
@@ -54,13 +34,39 @@ public class JoinMessage : Message
     /// Converts the message to a byte array.
     /// |0x03|MessageID|ChannelID|0|DisplayName|0|
     /// </summary>
+    /// <param name="messageID">ID of the message.</param>
     /// <returns>Byte array representing the message.</returns>
-    public override byte[] AsBytes()
+    public override byte[] AsBytes(short messageID)
     {
-        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID!));
+        // Message fields
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageID));
         byte[] channelIDBytes = Encoding.ASCII.GetBytes(ChannelID);
         byte[] displayNameBytes = Encoding.ASCII.GetBytes(DisplayName);
+
+        // Serialize into a byte array
         return [(byte)MessageType.JOIN, .. messageIDBytes, .. channelIDBytes, 0, .. displayNameBytes, 0];
+    }
+
+    /// <summary>
+    /// Tries to parse a JOIN message from a byte array.
+    /// </summary>
+    /// <param name="response">Byte array representing the message.</param>
+    /// <param name="message">The resulting JOIN message if parsed succesfully, else null.</param>
+    /// <returns>True if parsed succesfully, else false.</returns>
+    public static bool TryParse(byte[] response, out JoinMessage? message)
+    {
+        // Has to be at least |0x03|MessageID|MessageID|ChannelID|0|DisplayName|0|
+        if (response.Length < 6)
+        {
+            message = null;
+            return false;
+        }
+
+        // Message ID
+        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 1));
+
+        // Channel ID
+        throw new NotImplementedException("Parsing of channel ID is not implemented yet.");
     }
 
     /// <summary>
