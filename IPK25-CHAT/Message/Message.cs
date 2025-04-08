@@ -135,6 +135,58 @@ public abstract class Message(MessageType type) : IReadable
     }
 
     /// <summary>
+    /// Parses the channel ID from a byte array.
+    /// </summary>
+    /// <param name="message">The byte array to search for the channel ID.</param>
+    /// <param name="startIndex">Start of the array section to look for the channel ID.</param>
+    /// <param name="success">True if parsed successfully, else false.</param>
+    /// <param name="channelID">Contains the outgoing string representation of the channel iD if parsed successfully, else null.</param>
+    /// <returns>Index after the trailing zero after the channelID.</returns>
+    protected static int ParseChannelID(byte[] message, int startIndex, out bool success, out string? channelID)
+    {
+        // Help variables
+        List<byte> channelIDBytes = [];
+        uint count = 0;
+
+        // Set at start
+        channelID = null;
+
+        // Loop through the section of the array starting at startIndex
+        foreach(byte channelIDByte in message[startIndex..])
+        {
+            // Message end
+            if(channelIDByte == 0) break;
+
+            // Channel ID too long
+            else if(count++ > 20)
+            {
+                success = false;
+                channelID = "";
+                return 0;
+            }
+
+            // Not a alphanumeric character or one of -,_
+            else if(!(channelIDByte >= 'a' && channelIDByte <= 'z') &&
+                    !(channelIDByte >= 'A' && channelIDByte <= 'Z') &&
+                    !(channelIDByte >= '0' && channelIDByte <= '9') &&
+                    channelIDByte != '-' && channelIDByte != '_')
+            {
+                success = false;
+                channelID = "";
+                return 0;
+            }
+
+            // Valid character
+            else channelIDBytes.Add(channelIDByte);
+        }
+
+        // Covert to string and return
+        channelID = Encoding.ASCII.GetString([.. channelIDBytes]);
+        success = true;
+        return startIndex + channelID.Length + 1;
+    }
+
+    /// <summary>
     /// Parses the message content parameter from a byte array.
     /// Does not need to return the index after the message content since it's always at the tail of the message.
     /// </summary>

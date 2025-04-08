@@ -11,8 +11,14 @@ using IPK_25_CHAT.Enum;
 /// </summary>
 /// <param name="displayName">Display name of the user as a string.</param>
 /// <param name="messageContent">Content of the message as a string.</param>
-public class MsgMessage(string displayName, string messageContent) : Message(MessageType.MSG)
+/// <param name="messageID">ID of the message as a byte. Unused in the TCP variant, hence the default value.</param>
+public class MsgMessage(string displayName, string messageContent, ushort messageID = 0) : Message(MessageType.MSG)
 {
+    /// <summary>
+    /// ID of the message.
+    /// </summary>
+    public readonly ushort MessageID = messageID;
+
     /// <summary>
     /// Regular expression for the textual version of the MSG message.
     /// </summary>
@@ -50,6 +56,45 @@ public class MsgMessage(string displayName, string messageContent) : Message(Mes
         
         // Serialize into a byte array
         return [(byte)MessageType.MSG, .. messageIDBytes, .. displayNameBytes, 0, .. messageContentBytes, 0];
+    }
+
+    /// <summary>
+    /// Tries to parse a MSG message from a byte array.
+    /// </summary>
+    /// <param name="response">Byte array representing the message.</param>
+    /// <param name="message">The resulting MSG message if parsed successfully, else null.</param>
+    /// <returns>True if parsed successfully, else false.</returns>
+    public static bool TryParse(byte[] response, out MsgMessage? message)
+    {
+        // Has to be at least |0x04|MessageID|MessageID|DisplayName|0|MessageContent|0|
+        if(response.Length < 7)
+        {
+            message = null;
+            return false;
+        }
+
+        // Message ID
+        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 1));
+
+        // Try to parse the display name
+        int messageContentIndex = ParseDisplayName(response, 3, out bool success, out string? displayName);
+        if(!success)
+        {
+            message = null;
+            return false;
+        }
+
+        // Try to parse the message content
+        string? messageContent = ParseMessageContent(response, messageContentIndex, out success);
+        if(!success)
+        {
+            message = null;
+            return false;
+        }
+
+        // Create and return the message
+        message = new MsgMessage(displayName!, messageContent!, messageID);
+        return true;
     }
 
     /// <summary>

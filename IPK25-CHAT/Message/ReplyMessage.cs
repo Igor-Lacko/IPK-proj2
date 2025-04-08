@@ -11,9 +11,15 @@ using IPK_25_CHAT.Enum;
 /// </summary>
 /// <param name="ok">True if the message is a positive reply, false otherwise.</param>
 /// <param name="messageContent">Content of the reply message as a string.</param>
-/// <param name="refMessageID">Only used in the UDP variant. ID of the message we are replying to.</param>
-public class ReplyMessage(bool ok, string messageContent, ushort refMessageID = 0) : Message(MessageType.REPLY)
+/// <param name="messageID">ID of the message. Only used in the UDP variant, hence the default value.</param>
+/// <param name="refMessageID">Same as messageID, identifies the message that is being replied to.</param>
+public class ReplyMessage(bool ok, string messageContent, ushort messageID = 0, ushort refMessageID = 0) : Message(MessageType.REPLY)
 {
+    /// <summary>
+    /// ID of the message.
+    /// </summary>
+    public readonly ushort MessageID = messageID;
+
     /// <summary>
     /// Regular expression for the textual version of the REPLY message.
     /// </summary>
@@ -57,6 +63,43 @@ public class ReplyMessage(bool ok, string messageContent, ushort refMessageID = 
 
         // Serialize into a byte array
         return [(byte)MessageType.REPLY, ok, .. messageIDBytes, .. refMessageIDBytes, 0, .. messageContentBytes, 0];
+    }
+
+    /// <summary>
+    /// Tries to parse a REPLY message from a byte array.
+    /// </summary>
+    /// <param name="response">Byte array representing the message.</param>
+    /// <param name="message">The resulting REPLY message if parsed successfully, else null.</param>
+    /// <returns>True if parsed successfully, else false.</returns>
+    public static bool TryParse(byte[] response, out ReplyMessage? message)
+    {
+        // Has to be at least |0x01|MessageID|MessageID|Result|RefMessageID|RefMessageID|MessageContent|0|
+        if (response.Length < 7)
+        {
+            message = null;
+            return false;
+        }
+
+        // Message ID
+        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 1));
+
+        // Result
+        bool ok = response[3] == 1;
+
+        // RefMessageID
+        ushort refMessageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 4));
+
+        // Try to parse the message content
+        string? messageContent = ParseMessageContent(response, 6, out bool success);
+        if (!success)
+        {
+            message = null;
+            return false;
+        }
+
+        // Create and return the message
+        message = new ReplyMessage(ok, messageContent!, messageID, refMessageID);
+        return true;
     }
 
     /// <summary>

@@ -66,7 +66,7 @@ public class ErrMessage(string displayName, string messageContent, ushort messag
     public static bool TryParse(byte[] response, out ErrMessage? message)
     {
         // Has to be at least |0xFE|MessageID|MessageID|DisplayName|0|MessageContent|0|
-        if(response.Length < 6)
+        if(response.Length < 7)
         {
             message = null;
             return false;

@@ -11,8 +11,14 @@ using IPK_25_CHAT.Enum;
 /// </summary>
 /// <param name="displayName">Display name of the user as a string.</param>
 /// <param name="channelID">ID of the chat channel to be joined as a string.</param>
-public class JoinMessage(string displayName, string channelID) : Message(MessageType.JOIN)
+/// <param name="messageID">ID of the message. UDP specific, hence the default value</param>
+public class JoinMessage(string displayName, string channelID, ushort messageID = 0) : Message(MessageType.JOIN)
 {
+    /// <summary>
+    /// Message ID.
+    /// </summary>
+    public readonly ushort MessageID = messageID;
+
     /// <summary>
     /// Display name of the user.
     /// </summary>
@@ -56,7 +62,7 @@ public class JoinMessage(string displayName, string channelID) : Message(Message
     public static bool TryParse(byte[] response, out JoinMessage? message)
     {
         // Has to be at least |0x03|MessageID|MessageID|ChannelID|0|DisplayName|0|
-        if (response.Length < 6)
+        if (response.Length < 7)
         {
             message = null;
             return false;
@@ -66,7 +72,24 @@ public class JoinMessage(string displayName, string channelID) : Message(Message
         ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 1));
 
         // Channel ID
-        throw new NotImplementedException("Parsing of channel ID is not implemented yet.");
+        int displayNameIndex = ParseChannelID(response, 3, out bool success, out string? channelID);
+        if (!success)
+        {
+            message = null;
+            return false;
+        }
+
+        // Display name
+        _ = ParseDisplayName(response, displayNameIndex, out success, out string? displayName);
+        if (!success)
+        {
+            message = null;
+            return false;
+        }
+
+        // Create the message
+        message = new JoinMessage(displayName!, channelID!, messageID);
+        return true;
     }
 
     /// <summary>
