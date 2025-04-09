@@ -26,7 +26,7 @@ public class ByeMessage(string displayName, ushort messageID = 0) : Message(Mess
     /// <summary>
     /// ID of the message.
     /// </summary>
-    public readonly ushort MessageID = messageID;
+    private ushort MessageID = messageID;
 
     /// <summary>
     /// Checks if the message is valid in the current client state.
@@ -41,10 +41,13 @@ public class ByeMessage(string displayName, ushort messageID = 0) : Message(Mess
     /// </summary>
     /// <param name="messageID">ID of the message.</param>
     /// <returns>Byte array representing the message.</returns>
-    public override byte[] AsBytes(short messageID)
+    public override byte[] AsBytes(ushort messageID)
     {
+        // Set the message ID
+        MessageID = messageID;
+
         // Message fields
-        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageID!));
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID!));
         byte[] displayNameBytes = Encoding.ASCII.GetBytes(DisplayName);
 
         // Serialize into a byte array
@@ -85,4 +88,10 @@ public class ByeMessage(string displayName, ushort messageID = 0) : Message(Mess
     /// </summary>
     /// <returns>String representing the message.</returns>
     public override string ToString() => $"BYE FROM {DisplayName}\r\n";
+
+    /// <summary>
+    /// Returns the message id. Needed for compatibility with the Message class.
+    /// </summary>
+    /// <returns>Message ID.</returns>
+    public override ushort GetMessageID() => MessageID;
 }

@@ -41,10 +41,10 @@ public class AuthMessage(AuthCommand command) : Message(MessageType.AUTH)
     /// </summary>
     /// <param name="messageID">ID of the message.</param>
     /// <returns>Byte array representing the message.</returns>
-    public override byte[] AsBytes(short messageID)
+    public override byte[] AsBytes(ushort messageID)
     {
         // Message fields
-        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageID));
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)messageID));
         byte[] usernameBytes = Encoding.ASCII.GetBytes(Username);
         byte[] displayNameBytes = Encoding.ASCII.GetBytes(DisplayName);
         byte[] secretBytes = Encoding.ASCII.GetBytes(Secret);
@@ -58,4 +58,10 @@ public class AuthMessage(AuthCommand command) : Message(MessageType.AUTH)
     /// </summary>
     /// <returns>String representing the message.</returns>
     public override string ToString() => $"AUTH {Username} AS {DisplayName} USING {Secret}\r\n";
+
+    /// <summary>
+    /// Throws a exception, since AUTH messages can't be received from the server.
+    /// </summary>
+    /// <exception cref="ArgumentException">Always thrown.</exception>
+    public override ushort GetMessageID() => throw new ArgumentException("AUTH messages can't be received from the server.");
 }

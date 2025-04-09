@@ -14,7 +14,7 @@ public class PingMessage(ushort messageID) : Message(MessageType.PING)
     /// <summary>
     /// ID of the message.
     /// </summary>
-    public readonly ushort MessageID = messageID;
+    private ushort MessageID = messageID;
 
     /// <summary>
     /// Checks if the message is valid in the current client state. Returns true always, since the server only sends this message.
@@ -29,7 +29,7 @@ public class PingMessage(ushort messageID) : Message(MessageType.PING)
     /// <param name="messageID">ID of the message.</param>
     /// <returns>Throws an exception.</returns>
     /// <exception cref="ArgumentException">Thrown when the method is called.</exception>
-    public override byte[] AsBytes(short messageID) => throw new ArgumentException("Client does not allow you to send PING messages!");
+    public override byte[] AsBytes(ushort messageID) => throw new ArgumentException("Client does not allow you to send PING messages!");
 
     /// <summary>
     /// Tries to parse a PING message from a byte array.
@@ -58,4 +58,10 @@ public class PingMessage(ushort messageID) : Message(MessageType.PING)
     /// <returns>Throws an exception.</returns>
     /// <exception cref="ArgumentException">Thrown when the method is called.</exception>
     public override string ToString() => throw new ArgumentException("PING message is not used in textual form.");
+
+    /// <summary>
+    /// Returns the message ID.
+    /// </summary>
+    /// <returns>Message ID.</returns>
+    public override ushort GetMessageID() => MessageID;
 }

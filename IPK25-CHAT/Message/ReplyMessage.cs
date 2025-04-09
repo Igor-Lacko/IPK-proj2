@@ -18,7 +18,7 @@ public class ReplyMessage(bool ok, string messageContent, ushort messageID = 0, 
     /// <summary>
     /// ID of the message.
     /// </summary>
-    public readonly ushort MessageID = messageID;
+    private ushort MessageID = messageID;
 
     /// <summary>
     /// Regular expression for the textual version of the REPLY message.
@@ -53,10 +53,10 @@ public class ReplyMessage(bool ok, string messageContent, ushort messageID = 0, 
     /// </summary>
     /// <param name="messageID">ID of the message.</param>
     /// <returns>Byte array representing the message.</returns>
-    public override byte[] AsBytes(short messageID)
+    public override byte[] AsBytes(ushort messageID)
     {
         // Message fields
-        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageID));
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)messageID));
         byte ok = (byte)(OK ? 1 : 0);
         byte[] refMessageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)RefMessageID));
         byte[] messageContentBytes = Encoding.ASCII.GetBytes(MessageContent);
@@ -107,4 +107,10 @@ public class ReplyMessage(bool ok, string messageContent, ushort messageID = 0, 
     /// </summary>
     /// <returns>String representing the message.</returns>
     public override string ToString() => $"REPLY {(OK ? "OK" : "NOK")} IS {MessageContent}\r\n";
+
+    /// <summary>
+    /// Returns the message ID (of the REPLY itself, not the referenced message).
+    /// </summary>
+    /// <returns>Message ID of the REPLY message.</returns>
+    public override ushort GetMessageID() => MessageID;
 }

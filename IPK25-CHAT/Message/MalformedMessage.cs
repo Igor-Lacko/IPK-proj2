@@ -28,7 +28,7 @@ public class MalformedMessage(string? messageContent) : Message(MessageType.MALF
     /// Converts the message to a byte array.
     /// </summary>
     /// <returns>Byte array representation of the message.</returns>
-    public override byte[] AsBytes(short messageID)
+    public override byte[] AsBytes(ushort messageID)
     {
         throw new ArgumentException("Malformed message cannot be converted to bytes.");
     }
@@ -39,4 +39,10 @@ public class MalformedMessage(string? messageContent) : Message(MessageType.MALF
     /// </summary>
     /// <returns>String representation of the message.</returns>
     public override string ToString() => MessageContent ?? "Malformed message";
+
+    /// <summary>
+    /// Throws an exception, since malformed messages do not have message IDs.
+    /// </summary>
+    /// <throws exception cref="ArgumentException">Always thrown.</exception>
+    public override ushort GetMessageID() => throw new ArgumentException("Malformed messages do not have message IDs.");
 }

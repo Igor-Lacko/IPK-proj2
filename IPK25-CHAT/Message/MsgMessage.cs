@@ -17,7 +17,7 @@ public class MsgMessage(string displayName, string messageContent, ushort messag
     /// <summary>
     /// ID of the message.
     /// </summary>
-    public readonly ushort MessageID = messageID;
+    private ushort MessageID = messageID;
 
     /// <summary>
     /// Regular expression for the textual version of the MSG message.
@@ -47,10 +47,13 @@ public class MsgMessage(string displayName, string messageContent, ushort messag
     /// </summary>
     /// <param name="messageID">ID of the message.</param>
     /// <returns>Byte array representing the message.</returns>
-    public override byte[] AsBytes(short messageID)
+    public override byte[] AsBytes(ushort messageID)
     {
+        // Set ID
+        MessageID = messageID;
+
         // Message fields
-        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageID));
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)messageID));
         byte[] displayNameBytes = Encoding.ASCII.GetBytes(DisplayName);
         byte[] messageContentBytes = Encoding.ASCII.GetBytes(MessageContent);
         
@@ -102,4 +105,10 @@ public class MsgMessage(string displayName, string messageContent, ushort messag
     /// </summary>
     /// <returns>String representing the message.</returns>
     public override string ToString() => $"MSG FROM {DisplayName} IS {MessageContent}\r\n";
+
+    /// <summary>
+    /// Returns the message id. Needed for compatibility with the Message class.
+    /// </summary>
+    /// <returns>Message ID.</returns>
+    public override ushort GetMessageID() => MessageID;
 }

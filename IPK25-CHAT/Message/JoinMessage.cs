@@ -11,14 +11,8 @@ using IPK_25_CHAT.Enum;
 /// </summary>
 /// <param name="displayName">Display name of the user as a string.</param>
 /// <param name="channelID">ID of the chat channel to be joined as a string.</param>
-/// <param name="messageID">ID of the message. UDP specific, hence the default value</param>
-public class JoinMessage(string displayName, string channelID, ushort messageID = 0) : Message(MessageType.JOIN)
+public class JoinMessage(string displayName, string channelID) : Message(MessageType.JOIN)
 {
-    /// <summary>
-    /// Message ID.
-    /// </summary>
-    public readonly ushort MessageID = messageID;
-
     /// <summary>
     /// Display name of the user.
     /// </summary>
@@ -42,10 +36,10 @@ public class JoinMessage(string displayName, string channelID, ushort messageID 
     /// </summary>
     /// <param name="messageID">ID of the message.</param>
     /// <returns>Byte array representing the message.</returns>
-    public override byte[] AsBytes(short messageID)
+    public override byte[] AsBytes(ushort messageID)
     {
         // Message fields
-        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageID));
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)messageID));
         byte[] channelIDBytes = Encoding.ASCII.GetBytes(ChannelID);
         byte[] displayNameBytes = Encoding.ASCII.GetBytes(DisplayName);
 
@@ -54,47 +48,14 @@ public class JoinMessage(string displayName, string channelID, ushort messageID 
     }
 
     /// <summary>
-    /// Tries to parse a JOIN message from a byte array.
-    /// </summary>
-    /// <param name="response">Byte array representing the message.</param>
-    /// <param name="message">The resulting JOIN message if parsed succesfully, else null.</param>
-    /// <returns>True if parsed succesfully, else false.</returns>
-    public static bool TryParse(byte[] response, out JoinMessage? message)
-    {
-        // Has to be at least |0x03|MessageID|MessageID|ChannelID|0|DisplayName|0|
-        if (response.Length < 7)
-        {
-            message = null;
-            return false;
-        }
-
-        // Message ID
-        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 1));
-
-        // Channel ID
-        int displayNameIndex = ParseChannelID(response, 3, out bool success, out string? channelID);
-        if (!success)
-        {
-            message = null;
-            return false;
-        }
-
-        // Display name
-        _ = ParseDisplayName(response, displayNameIndex, out success, out string? displayName);
-        if (!success)
-        {
-            message = null;
-            return false;
-        }
-
-        // Create the message
-        message = new JoinMessage(displayName!, channelID!, messageID);
-        return true;
-    }
-
-    /// <summary>
     /// Converts the message to a string.
     /// </summary>
     /// <returns>String representing the message.</returns>
     public override string ToString() => $"JOIN {ChannelID} AS {DisplayName}\r\n";
+
+    /// <summary>
+    /// Throws an exception, since JOIN messages can't be received froim the server.
+    /// </summary>
+    /// <exception cref="ArgumentException">Always thrown.</exception>
+    public override ushort GetMessageID() => throw new ArgumentException("JOIN messages can't be received from the server.");
 }

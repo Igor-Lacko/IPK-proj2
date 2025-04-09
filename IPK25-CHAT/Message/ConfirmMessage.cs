@@ -14,7 +14,7 @@ public class ConfirmMessage(ushort messageID) : Message(MessageType.CONFIRM)
     /// <summary>
     /// ID of the message that was being comfirmed.
     /// </summary>
-    public readonly ushort MessageID = messageID;
+    private ushort RefMessageID = messageID;
 
     /// <summary>
     /// Checks if the message is valid in the current client state.
@@ -29,7 +29,11 @@ public class ConfirmMessage(ushort messageID) : Message(MessageType.CONFIRM)
     /// </summary>
     /// <param name="messageID">ID of the message.</param>
     /// <returns>Byte array representing the message.</returns>
-    public override byte[] AsBytes(short messageID) => [(byte)MessageType.CONFIRM, .. BitConverter.GetBytes(IPAddress.HostToNetworkOrder(messageID))];
+    public override byte[] AsBytes(ushort messageID)
+    {
+        RefMessageID = messageID;
+        return [(byte)MessageType.CONFIRM, .. BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)RefMessageID))];
+    }
 
     /// <summary>
     /// Tries to parse a CONFIRM message from a byte array.
@@ -57,4 +61,10 @@ public class ConfirmMessage(ushort messageID) : Message(MessageType.CONFIRM)
     /// <returns>Throws an exception.</returns>
     /// <exception cref="ArgumentException">Thrown when the method is called.</exception>
     public override string ToString() => throw new ArgumentException("CONFIRM message is not used in textual form.");
+
+    /// <summary>
+    /// Returns the message ID of the referenced message.
+    /// </summary>
+    /// <returns>Message ID of the referenced message.</returns>
+    public override ushort GetMessageID() => RefMessageID;
 }

@@ -73,15 +73,54 @@ public abstract class Message(MessageType type) : IReadable
     /// <param name="message">Byte array representing the message. Is UDP only.</param>
     /// <param name="result">Variable to store the result, if parsed successfully.</param>
     /// <returns>True if parsed successfully, else it returns false.</returns>
-    public static bool Parse(byte[] message, out Message result)
+    public static Message Parse(byte[] message)
     {
         // From the message type
-        // switch(message[0])
-        // {
-        //     case MessageType.BYE:
-        //         result 
-        // }
-        throw new NotImplementedException("Parsing of byte array messages is not implemented yet.");
+        switch(message[0])
+        {
+            case (byte)MessageType.BYE:
+                if(ByeMessage.TryParse(message, out ByeMessage? byeMessage))
+                    return byeMessage!;
+
+                break;
+
+            case (byte)MessageType.ERR:
+                if(ErrMessage.TryParse(message, out ErrMessage? errMessage))
+                    return errMessage!;
+
+                break;
+
+            case (byte)MessageType.CONFIRM:
+                if(ConfirmMessage.TryParse(message, out ConfirmMessage? confirmMessage))
+                    return confirmMessage!;
+
+                break;
+
+            case(byte)MessageType.PING:
+                if(PingMessage.TryParse(message, out PingMessage? pingMessage))
+                    return pingMessage!;
+
+                break;
+
+            case (byte)MessageType.REPLY:
+                if(ReplyMessage.TryParse(message, out ReplyMessage? replyMessage))
+                    return replyMessage!;
+
+                break;
+
+            case (byte)MessageType.MSG:
+                if(MsgMessage.TryParse(message, out MsgMessage? msgMessage))
+                    return msgMessage!;
+
+                break;
+
+            // No match for message type
+            default:
+                return new MalformedMessage(null);
+        }
+
+        // Matched message type but failed to parse
+        return new MalformedMessage(null);
     }
 
     /// <summary>
@@ -232,7 +271,12 @@ public abstract class Message(MessageType type) : IReadable
     /// <summary>
     /// Converts the message to a byte array.
     /// </summary>
-    /// <param name="messageID">ID of the message as a ushort.</param>
+    /// <param name="messageID">ID of the message.</param>
     /// <returns>Byte array representing the message.</returns>
-    public abstract byte[] AsBytes(short messageID);
+    public abstract byte[] AsBytes(ushort messageID);
+
+    /// <summary>
+    /// Returns the message's ID. Only used in some message types
+    /// </summary>
+    public abstract ushort GetMessageID();
 }
