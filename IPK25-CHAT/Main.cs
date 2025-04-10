@@ -1,6 +1,6 @@
 ﻿using IPK_25_CHAT.Arguments;
-using IPK_25_CHAT.TCP.Client;
-using IPK_25_CHAT.UDP.Client;
+using IPK_25_CHAT.TCP;
+using IPK_25_CHAT.UDP;
 using System.Net.Sockets;
 
 namespace IPK_25_CHAT;

@@ -1,11 +1,10 @@
 /* Contains the TCPClient class, which handles the TCP variant of this program. */
 
-namespace IPK_25_CHAT.TCP.Client;
+namespace IPK_25_CHAT.TCP;
 
-using System.Net;
 using IPK_25_CHAT.Client;
 using IPK_25_CHAT.Interface;
-using IPK_25_CHAT.TCP.IO;
+using System.Net;
 
 
 /// <summary>

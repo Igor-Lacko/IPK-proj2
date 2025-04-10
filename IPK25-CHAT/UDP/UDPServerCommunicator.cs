@@ -1,10 +1,10 @@
 /* Contains a class for UDP communication with the server */
 
-namespace IPK_25_CHAT.UDP.IO;
+namespace IPK_25_CHAT.UDP;
 
-using IPK_25_CHAT.Enum;
-using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Message;
+using IPK_25_CHAT.Interface;
+using IPK_25_CHAT.Enum;
 using System.Net;
 using System.Net.Sockets;
 
@@ -236,11 +236,7 @@ public class UDPServerCommunicator(IPAddress host, ushort initialPort, ushort ti
 
         // Depending on if we were connected or not
         if(UdpSocket!.Connected) await UdpSocket.SendAsync(messageAsBytes);
-        else
-        {
-            Console.WriteLine($"Sending message to {Host}:{Port}");
-            await UdpSocket!.SendToAsync(messageAsBytes, current);
-        }
+        else await UdpSocket!.SendToAsync(messageAsBytes, current);
 
         // Flag
         bool confirmed = false;

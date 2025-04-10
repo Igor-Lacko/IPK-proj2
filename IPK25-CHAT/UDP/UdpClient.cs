@@ -1,15 +1,12 @@
 /* Contains a class which implements the UDP version of a IPK25CHAT client */
 
-namespace IPK_25_CHAT.UDP.Client;
+namespace IPK_25_CHAT.UDP;
 
 using IPK_25_CHAT.Client;
-using IPK_25_CHAT.IO;
+using IPK_25_CHAT.Command;
 using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Enum;
-using IPK_25_CHAT.Message;
-using IPK_25_CHAT.Command;
 using System.Net;
-using IPK_25_CHAT.UDP.IO;
 
 /// <summary>
 /// Class representing a UDP client.

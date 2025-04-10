@@ -1,6 +1,6 @@
 /* Class that contains the current state of a UDP message */
 
-namespace IPK_25_CHAT.UDP.IO;
+namespace IPK_25_CHAT.UDP;
 
 /// <summary>
 /// Class that contains the current state of a UDP message sent from the client.

@@ -1,10 +1,10 @@
 /* Class for communication with the server via TCP. Uses a NetworkStream object. */
 
-namespace IPK_25_CHAT.TCP.IO;
+namespace IPK_25_CHAT.TCP;
 
-using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.IO;
 using IPK_25_CHAT.Message;
+using IPK_25_CHAT.Interface;
 using System.Net;
 using System.Net.Sockets;
 
