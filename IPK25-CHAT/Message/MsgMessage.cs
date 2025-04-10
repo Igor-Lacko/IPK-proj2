@@ -69,15 +69,8 @@ public class MsgMessage(string displayName, string messageContent, ushort messag
     /// <returns>True if parsed successfully, else false.</returns>
     public static bool TryParse(byte[] response, out MsgMessage? message)
     {
-        // Has to be at least |0x04|MessageID|MessageID|DisplayName|0|MessageContent|0|
-        if(response.Length < 7)
-        {
-            message = null;
-            return false;
-        }
-
         // Message ID
-        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 1));
+        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 1));
 
         // Try to parse the display name
         int messageContentIndex = ParseDisplayName(response, 3, out bool success, out string? displayName);

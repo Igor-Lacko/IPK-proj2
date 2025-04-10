@@ -73,18 +73,22 @@ public class ReplyMessage(bool ok, string messageContent, ushort messageID = 0, 
     /// <returns>True if parsed successfully, else false.</returns>
     public static bool TryParse(byte[] response, out ReplyMessage? message)
     {
-        // Has to be at least |0x01|MessageID|MessageID|Result|RefMessageID|RefMessageID|MessageContent|0|
-        if (response.Length < 7)
+        // Message ID
+        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 1));
+
+        // Result
+        bool ok;
+        if (response[3] == 1)
+            ok = true;
+
+        else if (response[3] == 0)
+            ok = false;
+
+        else
         {
             message = null;
             return false;
         }
-
-        // Message ID
-        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 1));
-
-        // Result
-        bool ok = response[3] == 1;
 
         // RefMessageID
         ushort refMessageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 4));

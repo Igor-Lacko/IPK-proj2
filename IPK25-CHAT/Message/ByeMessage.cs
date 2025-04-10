@@ -59,13 +59,6 @@ public class ByeMessage(string displayName, ushort messageID = 0) : Message(Mess
     /// </summary>
     public static bool TryParse(byte[] response, out ByeMessage? message)
     {
-        // At least |0xFF|MessageID|MessageID|DisplayName|0|
-        if(response.Length < 5)
-        {
-            message = null;
-            return false;
-        }
-
         // Message ID
         ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 1));
 

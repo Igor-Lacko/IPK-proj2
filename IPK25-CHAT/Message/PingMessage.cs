@@ -2,8 +2,8 @@
 
 namespace IPK_25_CHAT.Message;
 
-using System.Net;
 using IPK_25_CHAT.Enum;
+using System.Net;
 
 /// <summary>
 /// Class representing the PING message, which is UDP specific.
@@ -39,15 +39,8 @@ public class PingMessage(ushort messageID) : Message(MessageType.PING)
     /// <returns>True if parsed successfully, else false.</returns>
     public static bool TryParse(byte[] response, out PingMessage? message)
     {
-        // Has to be |0x01|MessageID|MessageID|
-        if (response.Length != 3)
-        {
-            message = null;
-            return false;
-        }
-
         // Message ID
-        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 1));
+        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 1));
         message = new PingMessage(messageID);
         return true;
     }

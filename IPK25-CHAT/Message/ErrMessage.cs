@@ -68,15 +68,8 @@ public class ErrMessage(string displayName, string messageContent, ushort messag
     /// <param name="message">The resulting ERR message if parsed succesfully, else null.</param>
     public static bool TryParse(byte[] response, out ErrMessage? message)
     {
-        // Has to be at least |0xFE|MessageID|MessageID|DisplayName|0|MessageContent|0|
-        if(response.Length < 7)
-        {
-            message = null;
-            return false;
-        }
-
         // Message ID
-        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 1));
+        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 1));
 
         // Display name
         int messageContentStart = ParseDisplayName(response, 3, out bool success, out string? displayName);

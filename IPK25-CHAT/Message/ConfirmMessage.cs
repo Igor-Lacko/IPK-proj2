@@ -43,14 +43,7 @@ public class ConfirmMessage(ushort messageID) : Message(MessageType.CONFIRM)
     /// <returns>True if parsed succesfully, else false.</returns>
     public static bool TryParse(byte[] response, out ConfirmMessage? message)
     {
-        // Has to be |0x00|RefMessageID|RefMessageID|
-        if(response.Length != 3)
-        {
-            message = null;
-            return false;
-        }
-
-        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 1));
+        ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 1));
         message = new ConfirmMessage(messageID);
         return true;
     }

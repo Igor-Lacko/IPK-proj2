@@ -90,13 +90,17 @@ public class UDPServerCommunicator(IPAddress host, ushort initialPort, ushort ti
     /// </summary>
     public void Close()
     {
-        // Already closed
-        if(ServerInputCancellationToken.IsCancellationRequested) return;
+        try
+        {
+            ServerInputCancellationToken.Cancel();
+            UdpSocket!.Shutdown(SocketShutdown.Both);
+            UdpSocket!.Close();
+        }
 
-        // Close
-        ServerInputCancellationToken.Cancel();
-        UdpSocket!.Shutdown(SocketShutdown.Both);
-        UdpSocket!.Close();
+        catch
+        {
+            return;
+        }
     }
 
     /// <summary>
@@ -112,14 +116,15 @@ public class UDPServerCommunicator(IPAddress host, ushort initialPort, ushort ti
             // Filter out depending on if the socket is connected or not
             if(!UdpSocket!.Connected)
             {
-                // Endpoint to store
-                IPEndPoint remoteEndPoint = new(IPAddress.Any, 0);
-
                 // Receive the message
-                await UdpSocket!.ReceiveFromAsync(buffer, remoteEndPoint);
+                SocketReceiveFromResult result = await UdpSocket!.ReceiveFromAsync(buffer, new IPEndPoint(IPAddress.Any, 0));
+
+                // Either the opening port or the dynamically allocated server port
+                IPEndPoint remoteEndPoint = (IPEndPoint)result.RemoteEndPoint;
 
                 // Filter out non-server IP addresses at the beginning
-                if(remoteEndPoint.Address != Host) continue;
+                if(!remoteEndPoint.Address.Equals(Host))
+                    continue;
 
                 // Update the port if the server switched (on the initial AUTH) and connect to only receive from the server
                 if(remoteEndPoint.Port != Port)
@@ -181,7 +186,9 @@ public class UDPServerCommunicator(IPAddress host, ushort initialPort, ushort ti
         // Non PING/CONFIRM message which was also not seen before --> delegate to the client class
         else
         {
-            SeenMessageIDs.Add(message.GetMessageID());
+            ushort messageID = message.GetMessageID();
+            SeenMessageIDs.Add(messageID);
+            await SendConfirm(messageID);
             MessageReceived.Invoke(message);
         }
     }
@@ -212,7 +219,7 @@ public class UDPServerCommunicator(IPAddress host, ushort initialPort, ushort ti
     public async Task SendMessage(Message message)
     {
         // Wait for access to sending
-        await SendGuardian.WaitAsync();
+        await SendGuardian.WaitAsync(ServerInputCancellationToken.Token);
 
         // Current message ID
         ushort messageID = currentMessageId++;
@@ -229,7 +236,11 @@ public class UDPServerCommunicator(IPAddress host, ushort initialPort, ushort ti
 
         // Depending on if we were connected or not
         if(UdpSocket!.Connected) await UdpSocket.SendAsync(messageAsBytes);
-        else await UdpSocket!.SendToAsync(messageAsBytes, current);
+        else
+        {
+            Console.WriteLine($"Sending message to {Host}:{Port}");
+            await UdpSocket!.SendToAsync(messageAsBytes, current);
+        }
 
         // Flag
         bool confirmed = false;
