@@ -9,6 +9,7 @@ using IPK_25_CHAT.Enum;
 using IPK_25_CHAT.Message;
 using IPK_25_CHAT.Command;
 using System.Net;
+using IPK_25_CHAT.UDP.IO;
 
 /// <summary>
 /// Class representing a UDP client.
@@ -16,62 +17,88 @@ using System.Net;
 public class UDPClient : Client
 {
     /// <summary>
+    /// Number of retransmissions for the UDP client.
+    /// </summary>
+    private ushort NumberOfRetransmissions;
+
+    /// <summary>
+    /// Timeout when waiting for CONFIRM
+    /// </summary>
+    private ushort Timeout;
+
+    /// <summary>
+    /// Flag indicating if a sent message timeouted.
+    /// </summary>
+    private bool Timeouted;
+
+    /// <summary>
     /// Constructor for the UDP client.
     /// </summary>
     /// <param name="host">IP address of the host.</param>
     /// <param name="port">The host port to be connected to.</param>
-    public UDPClient(IPAddress host, ushort port) : base(host, port)
+    /// <param name="numberOfRetransmissions">Number of retries until a message is confirmed.</param>
+    /// <param name="timeout">Timeout for one confirm attempt.</param>
+    public UDPClient(IPAddress host, ushort port, ushort numberOfRetransmissions, ushort timeout) : base(host, port)
     {
-        throw new NotImplementedException("UDP client is not implemented yet.");
+        Host = host;
+        Port = port;
+        NumberOfRetransmissions = numberOfRetransmissions;
+        Timeout = timeout;
+
+        // Create the server communicator
+        ServerCommunicator = CreateServerCommunicator();
+
+        // Subscribe to events
+        ServerCommunicator.MessageReceived += MessageStorage.OnMessageReceived;
+        ((UDPServerCommunicator)ServerCommunicator).ConfirmTimeouted += OnMessageTimeout;
     }
 
-    protected override async Task TerminatingMessageReceived(Message message)
+    /// <summary>
+    /// Method to be called when a message times out.
+    /// </summary>
+    private void OnMessageTimeout()
     {
-        throw new NotImplementedException("UDP client is not implemented yet.");
+        // For the other methods
+        Timeouted = true;
+
+        // Terminate the connection
+        ErrorExit(false, null, false).Wait();
     }
 
+    /// <summary>
+    /// Executes the AUTH command. Same as the base/TCP version, just checks for timeouts.
+    /// </summary>
     protected override async Task ExecuteAuthCommand(AuthCommand command)
     {
-        throw new NotImplementedException("UDP client is not implemented yet.");
+        await base.ExecuteAuthCommand(command);
+        if(Timeouted) UpdateState(State.END);
     }
 
+    /// <summary>
+    /// Executes the OPEN command. Same as the base/TCP version, just checks for timeouts.
+    /// </summary>
     protected override async Task ExecuteJoinCommand(JoinCommand command)
     {
-        throw new NotImplementedException("UDP client is not implemented yet.");
+        await base.ExecuteJoinCommand(command);
+        if(Timeouted) UpdateState(State.END);
     }
 
-    protected override async Task AuthState()
-    {
-        throw new NotImplementedException("UDP client is not implemented yet.");
-    }
+    /// <summary>
+    /// Creates the server communicator for the UDP client.
+    /// </summary>
+    /// <returns>The communicator object.</returns>
+    protected override IServerCommunicator CreateServerCommunicator() => new UDPServerCommunicator(Host, Port, Timeout, NumberOfRetransmissions);
 
-    protected override async Task OpenState()
+    /// <summary>
+    /// Handles the user input.
+    /// </summary>
+    /// <param name="input">The user input.</param>
+    protected override async Task RunUserInput(IReadable input)
     {
-        throw new NotImplementedException("UDP client is not implemented yet.");
-    }
+        // Run the input
+        await base.RunUserInput(input);
 
-    protected override async Task JoinState()
-    {
-        throw new NotImplementedException("UDP client is not implemented yet.");
-    }
-
-    protected override void EndState()
-    {
-        throw new NotImplementedException("UDP client is not implemented yet.");
-    }
-
-    protected override IServerCommunicator CreateServerCommunicator()
-    {
-        throw new NotImplementedException("UDP client is not implemented yet.");
-    }
-
-    protected override void GracefulTermination()
-    {
-        throw new NotImplementedException("UDP client is not implemented yet.");
-    }
-
-    protected override async Task ErrorExit(bool sendErrorMessage, string? errorMessage, bool terminateConnection, int exitCode = 1)
-    {
-        throw new NotImplementedException("UDP client is not implemented yet.");
+        // Check timeouts
+        if(Timeouted) UpdateState(State.END);
     }
 }

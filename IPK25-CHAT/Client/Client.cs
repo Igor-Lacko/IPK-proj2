@@ -16,11 +16,6 @@ using IPK_25_CHAT.Enum;
 public abstract class Client
 {
     /// <summary>
-    /// Field to allow non-recursive setting.
-    /// </summary>
-    protected State _state = State.START;
-
-    /// <summary>
     /// Client's current state.
     /// </summary>
     protected State ClientState = State.START;
@@ -48,7 +43,7 @@ public abstract class Client
     /// <summary>
     /// Reads input from the server and sends messages to the server.
     /// </summary>
-    protected readonly IServerCommunicator ServerCommunicator;
+    protected IServerCommunicator ServerCommunicator;
 
     /// <summary>
     /// Queue of user inputs.
@@ -80,12 +75,11 @@ public abstract class Client
         // Instance attributes
         Host = host;
         Port = port;
-        ServerCommunicator = CreateServerCommunicator();
+        ServerCommunicator = null!;
         InputValidator = new UserInputValidator();
 
         // Subscribe to events
         InputReader.UserInputReceived += OnUserInputReceived;
-        ServerCommunicator.MessageReceived += MessageStorage.OnMessageReceived;
 
         // Don't immediately stop running
         Console.CancelKeyPress += (sender, e) => {  e.Cancel = true; UserInputQueue.Enqueue(null); };
@@ -173,7 +167,7 @@ public abstract class Client
     /// Sends a message or executes a command.
     /// </summary>
     /// <param name="input">Message or command.</param>
-    protected async Task RunUserInput(IReadable input)
+    protected virtual async Task RunUserInput(IReadable input)
     {
         if(input is Command command)
             await ExecuteCommand(command);
@@ -194,19 +188,69 @@ public abstract class Client
     /// </summary>
     /// <param name="message">Message received.</param>
     /// <returns>True if the message is terminating, false otherwise.</returns>
-    protected abstract Task TerminatingMessageReceived(Message message);
+    protected async Task<bool> TerminatingMessageReceived(Message message)
+    {
+        // Invalid message for the given state
+        if(!message.IsValid(ClientState))
+            await ErrorExit(true, $"Invalid message type {message.Type} in state {ClientState}", true);
+
+        // Maybe ERR/BYE/MALFORMED
+        switch(message.Type)
+        {
+            // Print the message and go to END
+            case MessageType.ERR:
+                StdoutResultWriter.PrintErrMessage((ErrMessage)message);
+                await ErrorExit(false, null, true);
+                return true;
+
+            // Go to END
+            case MessageType.BYE:
+                UpdateState(State.END);
+                return true;
+
+            // Print a local error and terminate
+            case MessageType.MALFORMED:
+                StdoutResultWriter.InternalClientError(((MalformedMessage)message).MessageContent);
+                await ErrorExit(true, "Malformed message received", true);
+                return true;
+        }
+
+        // Valid message
+        return false;
+    }
 
     /// <summary>
-    /// Executes the given AUTH command.
+    /// Executes the AUTH command.
     /// </summary>
-    /// <param name="command">AUTH command with parameters.</param>
-    protected abstract Task ExecuteAuthCommand(AuthCommand command);
+    /// <param name="command">Command to execute.</param>
+    protected virtual async Task ExecuteAuthCommand(AuthCommand command)
+    {
+        // Set user parameters
+        UpdateUsername(command.Username);
+        UpdateDisplayName(command.DisplayName);
+
+        // Open connection if not done already
+        if(ClientState == State.START)
+        {
+            ServerCommunicator.Initialize();
+            ServerCommunicator.Run();
+        }
+
+        // Send the AUTH message to the server
+        await ServerCommunicator.SendMessage(new AuthMessage(command));
+        UpdateState(State.AUTH);
+    }
 
     /// <summary>
     /// Executes the given JOIN command.
     /// </summary>
     /// <param name="command">JOIN command with parameters.</param>
-    protected abstract Task ExecuteJoinCommand(JoinCommand command);
+    protected virtual async Task ExecuteJoinCommand(JoinCommand command)
+    {
+        await ServerCommunicator.SendMessage(new JoinMessage(Config.DisplayName!, command.ChannelId));
+        UpdateRequestedChannelID(command.ChannelId);
+        UpdateState(State.JOIN);
+    }
 
     /// <summary>
     /// Executes the given command.
@@ -293,23 +337,199 @@ public abstract class Client
     /// <summary>
     /// Handles the client's authentication state.
     /// </summary>
-    protected abstract Task AuthState();
+    private async Task AuthState()
+    {
+        // Wait for a message from the server or a timeout
+        Task TimeoutTask = Task.Delay(5000);
+        Task<Message> ServerInputTask = MessageStorage.WaitForInput(CancellationToken.None);
+        Task completedTask = await Task.WhenAny(ServerInputTask, TimeoutTask);
+
+        // Check if the timeout task completed first
+        if(completedTask == TimeoutTask)
+        {
+            StdoutResultWriter.InternalClientError("Timeout when waiting for reply to authentication");
+            await ErrorExit(true, "Timeout when waiting for reply to authentication", true);
+            return;
+        }
+
+        Message reply = ServerInputTask.Result;
+
+        // Decide based on the type
+        if(await TerminatingMessageReceived(reply))
+            return;
+
+        // Check if the server replied with a positive or negative reply
+        else if(reply.Type == MessageType.REPLY)
+        {
+            // Print the result
+            StdoutResultWriter.PrintReplyMessage((ReplyMessage)reply);
+
+            // Go to OPEN or stay
+            if(((ReplyMessage)reply).OK)
+            {
+                UpdateState(State.OPEN);
+                return;
+            }
+        }
+
+        // If the server didn't reply, wait for a user command again (or a message from the server, but that would result in an error)
+
+        // Cancellation token source to only wait for one task
+        using var readInputCancel = new CancellationTokenSource();
+
+        // Tasks for user/server input
+        Task<string?> userInputTask = UserInputQueue.Dequeue(readInputCancel.Token);
+        Task<Message> serverInputTask = MessageStorage.WaitForInput(readInputCancel.Token);
+
+        // Wait for either task to finish
+        Task finishedTask = await Task.WhenAny(userInputTask, serverInputTask);
+
+        // Cancel the other task
+        readInputCancel.Cancel();
+
+        // Check which task finished
+        if(finishedTask == userInputTask)
+        {
+            // EOF or CTRL + C
+            if(userInputTask.Result == null) await OnEofReceived();
+
+            // Get the user input
+            IReadable? input = InputValidator.Validate(userInputTask.Result!);
+            if(input == null) return;
+            else await RunUserInput(input);
+        }
+
+        else if (finishedTask == serverInputTask)
+        {
+            // Get the server input
+            Message message = serverInputTask.Result;
+
+            // Check if the message is terminating, basically all messages are terminating in this state
+            if(await TerminatingMessageReceived(message))
+                return;
+
+            // Reply is valid in this state, but not when waiting for the user to ask for authentication
+            else if(message.Type == MessageType.REPLY)
+                await ErrorExit(true, "Reply message received when not waiting for it!", true);
+        }
+    }
 
     /// <summary>
     /// Handles the client's open state.
     /// </summary>
-    protected abstract Task OpenState();
+    private async Task OpenState()
+    {
+        // Loop while we are receivinf messages
+        while(ClientState == State.OPEN)
+        {
+            // To cancel the non-finished task
+            using var cts = new CancellationTokenSource();
+
+            // Wait for a message from the server or user input
+            Task<Message> serverInputTask = MessageStorage.WaitForInput(cts.Token);
+            Task<string?> userInputTask = UserInputQueue.Dequeue(cts.Token);
+
+            // Wait for the first task to complete
+            Task completedTask = await Task.WhenAny(serverInputTask, userInputTask);
+
+            // Cancel the other task
+            cts.Cancel();
+
+            // Server input came first --> either a message or a terminating message
+            if(completedTask == serverInputTask)
+            {
+                Message message = serverInputTask.Result;
+                if(await TerminatingMessageReceived(message))
+                    return;
+
+                // Received MSG
+                else
+                {
+                    StdoutResultWriter.PrintMsgMessage((MsgMessage)message);
+                    continue;
+                }
+            }
+
+            // User input came first --> either a message, or a valid command (basically all except auth)
+            else
+            {
+                // Check for EOF
+                if(userInputTask.Result == null) await OnEofReceived();
+
+                // Validate the input
+                IReadable? input = InputValidator.Validate(userInputTask.Result!);
+
+                // Invalid input
+                if(input == null) return;
+
+                // Valid input
+                else await RunUserInput(input);
+            }
+        }
+    }
 
     /// <summary>
     /// Handles the client's join state.
     /// </summary>
-    protected abstract Task JoinState();
+    private async Task JoinState()
+    {
+        // Until something triggers a state change
+        while(ClientState == State.JOIN)
+        {
+            // Wait for server input or a timeout
+            Task TimeoutTask = Task.Delay(5000);
+            Task<Message> ServerInputTask = MessageStorage.WaitForInput(CancellationToken.None);
+            Task completedTask = await Task.WhenAny(ServerInputTask, TimeoutTask);
+
+            // Check if the timeout task completed first
+            if(completedTask == TimeoutTask)
+            {
+                StdoutResultWriter.InternalClientError("Timeout when waiting for reply to join a chat channel");
+                await ErrorExit(true, "Timeout when waiting for reply to join a chat channel", true);
+                return;
+            }
+
+            Message message = ServerInputTask.Result;
+
+            // Check if the message is a terminating message
+            if(await TerminatingMessageReceived(message))
+                return;
+
+            // Reply or a normal message
+
+            // Normal message
+            else if(message.Type == MessageType.MSG)
+            {
+                // Print the message
+                StdoutResultWriter.PrintMsgMessage((MsgMessage)message);
+                continue;
+            }
+
+            // Reply from the server
+            else
+            {
+                ReplyMessage reply = (ReplyMessage)message;
+                StdoutResultWriter.PrintReplyMessage(reply);
+
+                // Change chat channel if the reply is positive
+                if(reply.OK) UpdateChannelID(Config.RequestedChannelID!);
+
+                // Set the requested ID to null, change the client state to OPEN and return
+                UpdateRequestedChannelID(null);
+                UpdateState(State.OPEN);
+                return;
+            }
+        }
+    }
 
     /// <summary>
     /// Handles the client's end state.
-    /// Might not need to be async?
     /// </summary>
-    protected abstract void EndState();
+    protected void EndState()
+    {
+        GracefulTermination();
+        Environment.Exit(0);
+    }
 
     /// <summary>
     /// Creates the protocol-specific server communicator.
@@ -320,7 +540,14 @@ public abstract class Client
     /// <summary>
     /// Gracefully terminates the connection to the server.
     /// </summary>
-    protected abstract void GracefulTermination();
+    protected void GracefulTermination()
+    {
+        // Close the server communicator
+        ServerCommunicator.Close();
+
+        // Close the input reader
+        InputReader.Close();
+    }
 
     /// <summary>
     /// Triggered on the error states of the client.
@@ -329,8 +556,22 @@ public abstract class Client
     ///     - Exit with the given code.
     /// </summary>
     /// <param name="sendErrorMessage">Whether to send an ERR message to the server.</param>
-    /// <param name="errorMessage">Error message.</param>
+    /// <param name="errorMessage">Error mesxsage.</param>
     /// <param name="terminateConnection">Whether to terminate the connection.</param>
     /// <param name="exitCode">Exit code.</param>
-    protected abstract Task ErrorExit(bool sendErrorMessage, string? errorMessage, bool terminateConnection, int exitCode = 1);
+    protected async Task ErrorExit(bool sendErrorMessage = false, string? errorMessage = null, bool terminateConnection = false, int exitCode = 1)
+    {
+        if(sendErrorMessage)
+        {
+            if(errorMessage == null) throw new ArgumentException("prosim igino oprav si kod");
+            await ServerCommunicator.SendMessage(new ErrMessage(Config.DisplayName!, errorMessage));
+        }
+
+        if(terminateConnection)
+            await ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
+
+        GracefulTermination();
+
+        Environment.Exit(exitCode);
+    }
 }
