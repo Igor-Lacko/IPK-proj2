@@ -487,3 +487,9 @@ $RECYCLE.BIN/
 *.swp
 
 *.pdf
+
+# Notes and sources
+*.txt
+
+# Not finished yet
+/Server/
