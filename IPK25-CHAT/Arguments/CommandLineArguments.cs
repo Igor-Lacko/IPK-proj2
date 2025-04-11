@@ -33,7 +33,7 @@ public struct CommandLineArguments
     /// <summary>
     /// Max number of UDP retransmissions.
     /// </summary>
-    public byte? Retransmissions;
+    public ushort? Retransmissions;
 
     /// <summary>
     /// If using the extended notation for channel ids, e.g. discord.CHANNLE_ID

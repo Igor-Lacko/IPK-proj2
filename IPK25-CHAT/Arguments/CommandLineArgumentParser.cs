@@ -84,10 +84,10 @@ public static class CommandLineArgumentParser
                     string protocol = args[++i];
 
                     // TCP
-                    if(protocol == "tcp" || protocol == "TCP") arguments.Protocol = ProtocolType.Tcp;
+                    if(protocol == "tcp") arguments.Protocol = ProtocolType.Tcp;
 
                     // UDP
-                    else if(protocol == "UDP" || protocol == "UDP") arguments.Protocol = ProtocolType.Udp;
+                    else if(protocol == "udp") arguments.Protocol = ProtocolType.Udp;
 
                     // Invalid protocol
                     else
@@ -120,7 +120,15 @@ public static class CommandLineArgumentParser
                     // Try to resolve thorugh DNS
                     try
                     {
-                        arguments.Address = Dns.GetHostAddresses(address)[0];
+                        foreach(IPAddress ipAddress in Dns.GetHostAddresses(address))
+                        {
+                            // Check if the address is IPv4
+                            if(ipAddress.AddressFamily == AddressFamily.InterNetwork)
+                            {
+                                arguments.Address = ipAddress;
+                                break;
+                            }
+                        }
                     }
 
                     // Invalid address
@@ -151,7 +159,7 @@ public static class CommandLineArgumentParser
                     break;
 
                 // Timeout
-                case "-w":
+                case "-d":
                     // Already defined case
                     if(arguments.Timeout != null)
                     {
@@ -177,7 +185,7 @@ public static class CommandLineArgumentParser
                         Environment.Exit(1);
                     }
 
-                    if(!byte.TryParse(args[++i], out byte retransmissions))
+                    if(!ushort.TryParse(args[++i], out ushort retransmissions))
                     {
                         Console.Error.WriteLine($"ERROR: Invalid retransmissions value {retransmissions}!");
                         Environment.Exit(1);
@@ -198,7 +206,7 @@ public static class CommandLineArgumentParser
                     break;
 
                 // Discord command
-                case "-d":
+                case "--discord":
                     // Already defined case
                     if(arguments.Discord)
                     {
