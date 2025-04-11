@@ -29,8 +29,10 @@ public class ServerInputStorage
     private Message? LastMessage = null;
 
     /// <summary>
-    /// Waits for the next input. Then it locks the semaphore.
+    /// Waits on the semaphore until the next message arrives and returns it to the client.
     /// </summary>
+    /// <param name="token">Cancellation token to cancel the wait. Used if the client is waiting for the
+    /// user and server at the same time (else CancellationToken.None) is passed.</param>
     public async Task<Message> WaitForInput(CancellationToken token)
     {
         try

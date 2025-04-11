@@ -11,30 +11,27 @@ using System.Net.Sockets;
 /// <summary>
 /// Class for UDP communication with the server.
 /// </summary>
-/// <param name="host">The host IP address.</param>
-/// <param name="initialPort">The initial port number.</param>
-/// <param name="timeout">Timeout for receiving CONFIRM messages.</param>
-public class UDPServerCommunicator(IPAddress host, ushort initialPort, ushort timeout, ushort retransmissions) : IServerCommunicator
+public class UDPServerCommunicator : IServerCommunicator
 {
     /// <summary>
     /// The host IP address.
     /// </summary>
-    private readonly IPAddress Host = host;
+    private readonly IPAddress Host;
 
     /// <summary>0
     /// The current port number.
     /// </summary>
-    private ushort Port = initialPort;
+    private ushort Port;
 
     /// <summary>
     /// The timeout for receiving CONFIRM messages.
     /// </summary>
-    private readonly ushort Timeout = timeout;
+    private readonly ushort Timeout;
 
     /// <summary>
     /// The number of retransmissions for the UDP client.
     /// </summary>
-    private readonly ushort NumberOfRetransmissions = retransmissions;
+    private readonly ushort NumberOfRetransmissions;
 
     /// <summary>
     /// List of already seen message IDs.
@@ -77,12 +74,22 @@ public class UDPServerCommunicator(IPAddress host, ushort initialPort, ushort ti
     public CancellationTokenSource ServerInputCancellationToken { get; } = new();
 
     /// <summary>
-    /// Initializes the socket for initial connection.
+    /// Constructor for the UDPServerCommunicator class.
     /// </summary>
-    public void Initialize()
+    /// <param name="host">The host IP address.</param>
+    /// <param name="initialPort">The initial port number.</param>
+    /// <param name="timeout">Timeout for receiving CONFIRM messages.</param>
+    /// <param name="retransmissions">Number of retries for one message until the communicator gets a confirmation.</param>
+    public UDPServerCommunicator(IPAddress host, ushort initialPort, ushort timeout, ushort retransmissions)
     {
+        Host = host;
+        Port = initialPort;
+        Timeout = timeout;
+        NumberOfRetransmissions = retransmissions;
+
+        // Initialize the socket and bind
         UdpSocket = new(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-        UdpSocket.Bind(new IPEndPoint (IPAddress.Any, 0));
+        UdpSocket.Bind(new IPEndPoint(IPAddress.Any, 0));
     }
 
     /// <summary>

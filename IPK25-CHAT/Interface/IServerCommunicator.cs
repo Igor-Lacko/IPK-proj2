@@ -26,12 +26,6 @@ public interface IServerCommunicator
     public void Run();
 
     /// <summary>
-    /// Initiates the communicator, meaning opens the connection to the server.
-    /// Done in the AUTH state, when the user first requests authentication.
-    /// </summary>
-    public void Initialize();
-
-    /// <summary>
     /// Closes the communicator.
     /// </summary>
     public void Close();

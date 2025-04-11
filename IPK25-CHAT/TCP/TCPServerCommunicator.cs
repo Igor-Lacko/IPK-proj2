@@ -17,37 +17,37 @@ using System.Net.Sockets;
 /// </remarks>
 /// <param name="host">IP address of the host.</param>
 /// <param name="port">The host port to be connected to.</param>
-public class TCPServerCommunicator(IPAddress host, ushort port) : IServerCommunicator
+public class TCPServerCommunicator : IServerCommunicator
 {
     /// <summary>
     /// Socket of type (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp).
     /// </summary>
-    private Socket? TCPSocket;
+    private readonly Socket TCPSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
     /// <summary>
     /// NetworkStream object for reading and writing data.
     /// </summary>
-    private NetworkStream? TCPStream = null;
+    private readonly NetworkStream TCPStream;
 
     /// <summary>
     /// StreamReader object for reading data from the network stream.
     /// </summary>
-    private StreamReader? TCPReader = null;
+    private readonly StreamReader TCPReader;
 
     /// <summary>
     /// StreamWriter object for writing data to the network stream.
     /// </summary>
-    private StreamWriter? TCPWriter = null;
+    private readonly StreamWriter TCPWriter;
 
     /// <summary>
     /// IP address of the host.
     /// </summary>
-    private readonly IPAddress Host = host;
+    private readonly IPAddress Host;
 
     /// <summary>
     /// Port of the host.
     /// </summary>
-    private readonly ushort Port = port;
+    private readonly ushort Port;
 
     /// <summary>
     /// Event thrown when a message is received from the server when receiving in a loop.
@@ -59,31 +59,26 @@ public class TCPServerCommunicator(IPAddress host, ushort port) : IServerCommuni
     /// </summary>
     public CancellationTokenSource ServerInputCancellationToken { get; } = new();
 
-    /// <summary>
-    /// Opens connection to the server.
-    /// </summary>
-    /// <throws>SocketException if the connection fails.</throws>
-    public void Initialize()
+    public TCPServerCommunicator(IPAddress host, ushort port)
     {
-        // Create the socket
-        TCPSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        // Initialize the stream
+        Host = host;
+        Port = port;
 
         // Try to connect
         try
         {
             TCPSocket.Connect(Host, Port);
+            TCPStream = new(TCPSocket);
+            TCPReader = new(TCPStream, System.Text.Encoding.ASCII);
+            TCPWriter = new(TCPStream, System.Text.Encoding.ASCII) { AutoFlush = true };
         }
 
         catch (SocketException e)
         {
-            StdoutResultWriter.InternalClientError($"Could not connect to the server: {e.Message}");
+            StdoutResultWriter.InternalClientError($"Failed to connect: {e.Message}");
             Environment.Exit(1);
         }
-
-        // Initialize the stream
-        TCPStream = new(TCPSocket);
-        TCPReader = new(TCPStream, System.Text.Encoding.ASCII);
-        TCPWriter = new(TCPStream, System.Text.Encoding.ASCII) { AutoFlush = true };
     }
 
     /// <summary>
@@ -167,18 +162,10 @@ public class TCPServerCommunicator(IPAddress host, ushort port) : IServerCommuni
     public void Close()
     {
         ServerInputCancellationToken.Cancel();
-        TCPWriter!.Close();
-        TCPReader!.Close();
-        TCPStream!.Close();
-
-        try
-        {
-            TCPSocket!.Shutdown(SocketShutdown.Both);
-        }
-
-        finally
-        {
-            TCPSocket!.Close();
-        }
+        TCPReader.Close();
+        TCPWriter.Close();
+        TCPStream.Close();
+        TCPSocket.Shutdown(SocketShutdown.Both);
+        TCPSocket.Close();
     }
 }

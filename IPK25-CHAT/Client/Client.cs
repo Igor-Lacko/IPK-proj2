@@ -61,11 +61,6 @@ public abstract class Client
     protected readonly UserInputValidator InputValidator;
 
     /// <summary>
-    /// Currently received message from the server.
-    /// </summary>
-    protected Message? ReceivedMessage = null;
-
-    /// <summary>
     /// Constructor. Sets the host and port.
     /// </summary>
     /// <param name="host">IP address of the server.</param>
@@ -229,13 +224,6 @@ public abstract class Client
         UpdateUsername(command.Username);
         UpdateDisplayName(command.DisplayName);
 
-        // Open connection if not done already
-        if(ClientState == State.START)
-        {
-            ServerCommunicator.Initialize();
-            ServerCommunicator.Run();
-        }
-
         // Send the AUTH message to the server
         await ServerCommunicator.SendMessage(new AuthMessage(command));
         UpdateState(State.AUTH);
@@ -291,6 +279,7 @@ public abstract class Client
     {
         // Receive input
         InputReader.Run();
+        ServerCommunicator.Run();
 
         // FSM loop
         do
@@ -323,15 +312,41 @@ public abstract class Client
     /// </summary>
     private async Task StartState()
     {
-        // Wait for the user to type in a command
-        string? input = await UserInputQueue.Dequeue();
-        if(input == null) await OnEofReceived();
+        // To cancel the non-finished task
+        using var readInputCancel = new CancellationTokenSource();
 
-        // Validate the input (all commands except join are valid in this state (and except a message))
-        IReadable? validatedInput = InputValidator.Validate(input!);
+        // Wait for the user or the server
+        Task<string?> userInputTask = UserInputQueue.Dequeue(readInputCancel.Token);
+        Task<Message> serverInputTask = MessageStorage.WaitForInput(readInputCancel.Token);
+        Task completedTask = await Task.WhenAny(userInputTask, serverInputTask);
 
-        // Run or stay in start
-        if(validatedInput != null) await RunUserInput(validatedInput);
+        // Cancel the task that did not finish
+        readInputCancel.Cancel();
+
+        // User input came first
+        if(completedTask == userInputTask)
+        {
+            // User input
+            string? input = userInputTask.Result;
+
+            // EOF or CTRL + C
+            if(input == null) await OnEofReceived();
+
+            // Execute if valid
+            IReadable? validatedInput = InputValidator.Validate(input!);
+            if(validatedInput == null) return;
+            else await RunUserInput(validatedInput);
+        }
+
+        // Server sent a message first
+        else
+        {
+            Message message = serverInputTask.Result;
+
+            // Basically always except maybe PING in UDP, but the server only sends that after authentication anyway (i think?...)
+            if(await TerminatingMessageReceived(message))
+                return;
+        }
     }
 
     /// <summary>
@@ -340,19 +355,19 @@ public abstract class Client
     private async Task AuthState()
     {
         // Wait for a message from the server or a timeout
-        Task TimeoutTask = Task.Delay(5000);
-        Task<Message> ServerInputTask = MessageStorage.WaitForInput(CancellationToken.None);
-        Task completedTask = await Task.WhenAny(ServerInputTask, TimeoutTask);
+        Task timeoutTask = Task.Delay(5000);
+        Task<Message> serverReplyTask = MessageStorage.WaitForInput(CancellationToken.None);
+        Task completedTask = await Task.WhenAny(serverReplyTask, timeoutTask);
 
         // Check if the timeout task completed first
-        if(completedTask == TimeoutTask)
+        if(completedTask == timeoutTask)
         {
             StdoutResultWriter.InternalClientError("Timeout when waiting for reply to authentication");
             await ErrorExit(true, "Timeout when waiting for reply to authentication", true);
             return;
         }
 
-        Message reply = ServerInputTask.Result;
+        Message reply = serverReplyTask.Result;
 
         // Decide based on the type
         if(await TerminatingMessageReceived(reply))
@@ -563,7 +578,7 @@ public abstract class Client
     {
         if(sendErrorMessage)
         {
-            if(errorMessage == null) throw new ArgumentException("prosim igino oprav si kod");
+            errorMessage ??= "unknown error";   // This should never happen
             await ServerCommunicator.SendMessage(new ErrMessage(Config.DisplayName!, errorMessage));
         }
 
