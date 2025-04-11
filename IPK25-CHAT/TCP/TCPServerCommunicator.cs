@@ -66,7 +66,7 @@ public class TCPServerCommunicator(IPAddress host, ushort port) : IServerCommuni
     public void Initialize()
     {
         // Create the socket
-        TCPSocket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        TCPSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
         // Try to connect
         try
@@ -96,10 +96,10 @@ public class TCPServerCommunicator(IPAddress host, ushort port) : IServerCommuni
     /// Reads one message from the server.
     /// </summary>
     /// <returns>String representing the message.</returns>
-    public async Task<string> GetMessage()
+    public async Task<string> GetMessage(CancellationToken token)
     {
         List<char> message = [];
-        char[] current = new char[1];
+        Memory<char> current = new char[1];
         int currentIndex = 0;
 
         // Until \r\n
@@ -108,15 +108,18 @@ public class TCPServerCommunicator(IPAddress host, ushort port) : IServerCommuni
         while (!done)
         {
             // Read one character
-            int bytesRead = await TCPReader!.ReadAsync(current, 0, 1);
+            int bytesRead = await TCPReader!.ReadAsync(current, token);
+
+            // Check for cancellation
+            token.ThrowIfCancellationRequested();
 
             if (bytesRead == 0)
                 break;
 
-            else message.Add(current[0]);
+            else message.Add(current.Span[0]);
 
             // If we have reached the end
-            if(current[0] == '\n')
+            if(current.Span[0] == '\n')
             {
                 // Check if the last character is \r
                 if (currentIndex != 0 && message[currentIndex - 1] == '\r')
@@ -144,9 +147,17 @@ public class TCPServerCommunicator(IPAddress host, ushort port) : IServerCommuni
         while (!ServerInputCancellationToken.Token.IsCancellationRequested)
         {
             // Parsing is done separately
-            string input = await GetMessage();
-            Message message = Message.Parse(input);
-            MessageReceived.Invoke(message);
+            try
+            {
+                string input = await GetMessage(ServerInputCancellationToken.Token);
+                Message message = Message.Parse(input);
+                MessageReceived.Invoke(message);
+            }
+
+            catch(OperationCanceledException)
+            {
+                return;
+            }
         }
     });
 
@@ -159,7 +170,15 @@ public class TCPServerCommunicator(IPAddress host, ushort port) : IServerCommuni
         TCPWriter!.Close();
         TCPReader!.Close();
         TCPStream!.Close();
-        TCPSocket!.Shutdown(SocketShutdown.Both);
-        TCPSocket.Close();
+
+        try
+        {
+            TCPSocket!.Shutdown(SocketShutdown.Both);
+        }
+
+        finally
+        {
+            TCPSocket!.Close();
+        }
     }
 }
