@@ -53,7 +53,7 @@ public class MsgMessage(string displayName, string messageContent, ushort messag
         MessageID = messageID;
 
         // Message fields
-        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)messageID));
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID));
         byte[] displayNameBytes = Encoding.ASCII.GetBytes(DisplayName);
         byte[] messageContentBytes = Encoding.ASCII.GetBytes(MessageContent);
         

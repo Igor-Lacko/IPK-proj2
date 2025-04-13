@@ -23,7 +23,7 @@ public class TCPClient : Client
         Host = host;
         Port = port;
         ServerCommunicator = CreateServerCommunicator();
-        ServerCommunicator.MessageReceived += MessageStorage.OnMessageReceived;
+        ServerCommunicator.MessageReceived += ServerInputQueue.Enqueue;
     }
 
     /// <summary>

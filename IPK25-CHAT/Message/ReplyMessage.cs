@@ -55,8 +55,10 @@ public class ReplyMessage(bool ok, string messageContent, ushort messageID = 0, 
     /// <returns>Byte array representing the message.</returns>
     public override byte[] AsBytes(ushort messageID)
     {
+        MessageID = messageID;
+
         // Message fields
-        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)messageID));
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID));
         byte ok = (byte)(OK ? 1 : 0);
         byte[] refMessageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)RefMessageID));
         byte[] messageContentBytes = Encoding.ASCII.GetBytes(MessageContent);
@@ -91,7 +93,8 @@ public class ReplyMessage(bool ok, string messageContent, ushort messageID = 0, 
         }
 
         // RefMessageID
-        ushort refMessageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToUInt16(response, 4));
+        ushort refMessageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 4));
+        Console.WriteLine($"RefMessageID: {refMessageID}");
 
         // Try to parse the message content
         string? messageContent = ParseMessageContent(response, 6, out bool success);

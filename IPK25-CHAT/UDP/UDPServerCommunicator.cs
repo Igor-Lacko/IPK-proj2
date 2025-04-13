@@ -46,7 +46,7 @@ public class UDPServerCommunicator : IServerCommunicator
     /// <summary>
     /// Socket for communication.
     /// </summary>
-    private Socket? UdpSocket = null;
+    private readonly Socket UdpSocket = new(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
     /// <summary>
     /// Semaphore for sending messages. Ensures that a sent message is confirmed before sending another.
@@ -69,6 +69,13 @@ public class UDPServerCommunicator : IServerCommunicator
     public event Action ConfirmTimeouted = () => { };
 
     /// <summary>
+    /// Guards access for checking and removing messages from SentMessageInformation.
+    /// Since if a very small timeoout value and multiple retransmissions
+    /// are used, we could receive CONFIRM messages for the same message in very quick succession.
+    /// </summary>
+    private readonly Lock MessageConfirmLock = new();
+
+    /// <summary>
     /// Cancellation token source. Cancels the server communicator at the end of the program.
     /// </summary>
     public CancellationTokenSource ServerInputCancellationToken { get; } = new();
@@ -87,8 +94,7 @@ public class UDPServerCommunicator : IServerCommunicator
         Timeout = timeout;
         NumberOfRetransmissions = retransmissions;
 
-        // Initialize the socket and bind
-        UdpSocket = new(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        // Bind the socket
         UdpSocket.Bind(new IPEndPoint(IPAddress.Any, 0));
     }
 
@@ -100,8 +106,8 @@ public class UDPServerCommunicator : IServerCommunicator
         try
         {
             ServerInputCancellationToken.Cancel();
-            UdpSocket!.Shutdown(SocketShutdown.Both);
-            UdpSocket!.Close();
+            UdpSocket.Shutdown(SocketShutdown.Both);
+            UdpSocket.Close();
         }
 
         catch
@@ -167,11 +173,17 @@ public class UDPServerCommunicator : IServerCommunicator
             return;
         }
 
-        // CONFIRM received --> Set the task result for the confirmed message
+        // CONFIRM received --> Set the task result for the confirmed message (if it exists)
         else if(message.Type == MessageType.CONFIRM)
         {
-            SentMessageInformation[message.GetMessageID()].OnConfirm.SetResult(true);
-            SentMessageInformation.Remove(message.GetMessageID());
+            lock(MessageConfirmLock)
+            {
+                if(SentMessageInformation.TryGetValue(message.GetMessageID(), out MessageStateInformation value))
+                {
+                    value.OnConfirm.SetResult(true);
+                    if(!value.IsRequest) SentMessageInformation.Remove(message.GetMessageID());
+                }
+            }
         }
 
         // Check if the ID was seen already, if yes send confirm and return
@@ -179,6 +191,24 @@ public class UDPServerCommunicator : IServerCommunicator
         {
             await SendConfirm(message.GetMessageID());
             return;
+        }
+
+        // Same for REPLY messages that are replying to a non-request message or a unknown message
+        else if(message.Type == MessageType.REPLY)
+        {
+            // Mark the message as being already seen, extract the ref id and send confirm
+            ushort messageID = message.GetMessageID();
+            ushort refMessageID = ((ReplyMessage)message).RefMessageID;
+            SeenMessageIDs.Add(messageID);
+            await SendConfirm(messageID);
+
+            // Verify if it's replying to a request
+            if(SentMessageInformation.TryGetValue(refMessageID, out MessageStateInformation value) && value.IsRequest)
+            {
+                // We shouldn't need a lock here since there can only be one request message at a time
+                SentMessageInformation.Remove(refMessageID);
+                MessageReceived.Invoke(message);
+            }
         }
 
         // PING received --> Send CONFIRM
@@ -232,7 +262,7 @@ public class UDPServerCommunicator : IServerCommunicator
         ushort messageID = currentMessageId++;
 
         // Create a object for the state of the message
-        MessageStateInformation messageState = new(messageID, new TaskCompletionSource<bool>());
+        MessageStateInformation messageState = new(messageID, new TaskCompletionSource<bool>(), message.Type == MessageType.AUTH || message.Type == MessageType.JOIN);
         SentMessageInformation[messageID] = messageState;
 
         // Current destination
@@ -242,8 +272,8 @@ public class UDPServerCommunicator : IServerCommunicator
         byte[] messageAsBytes = message.AsBytes(messageID);
 
         // Depending on if we were connected or not
-        if(UdpSocket!.Connected) await UdpSocket.SendAsync(messageAsBytes);
-        else await UdpSocket!.SendToAsync(messageAsBytes, current);
+        if(UdpSocket.Connected) await UdpSocket.SendAsync(messageAsBytes);
+        else await UdpSocket.SendToAsync(messageAsBytes, current);
 
         // Flag
         bool confirmed = false;
@@ -266,15 +296,15 @@ public class UDPServerCommunicator : IServerCommunicator
             else
             {
                 // Send the message again
-                if(UdpSocket!.Connected) await UdpSocket.SendAsync(messageAsBytes);
-                else await UdpSocket!.SendToAsync(messageAsBytes, current);
+                if(UdpSocket.Connected) await UdpSocket.SendAsync(messageAsBytes);
+                else await UdpSocket.SendToAsync(messageAsBytes, current);
             }
         }
 
         // Invoke the timeout event if the message was not confirmed and close the connection
         if(!confirmed)
         {
-            UdpSocket!.Close();
+            UdpSocket.Close();
             ConfirmTimeouted.Invoke();
         }
 

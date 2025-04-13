@@ -51,14 +51,16 @@ public abstract class Client
     protected readonly InputQueue<string?> UserInputQueue = new();
 
     /// <summary>
-    /// Stores the current message from the server.
+    /// Queue of server messages. This is probably not necessary, but it is here
+    /// in case that multiple messages were sent so quicly after each other that we would
+    /// "drop" one.
     /// </summary>
-    protected readonly ServerInputStorage MessageStorage = new();
+    protected readonly InputQueue<Message> ServerInputQueue = new();
 
     /// <summary>
     /// Validator for user input.
     /// </summary>
-    protected readonly UserInputValidator InputValidator;
+    protected readonly UserInputValidator InputValidator = new();
 
     /// <summary>
     /// Constructor. Sets the host and port.
@@ -71,7 +73,6 @@ public abstract class Client
         Host = host;
         Port = port;
         ServerCommunicator = null!;
-        InputValidator = new UserInputValidator();
 
         // Subscribe to events
         InputReader.UserInputReceived += OnUserInputReceived;
@@ -187,7 +188,7 @@ public abstract class Client
     {
         // Invalid message for the given state
         if(!message.IsValid(ClientState))
-            await ErrorExit(true, $"Invalid message type {message.Type} in state {ClientState}", true);
+            await ErrorExit(true, $"Invalid message type {message.Type} in state {ClientState}", true, 1);
 
         // Maybe ERR/BYE/MALFORMED
         switch(message.Type)
@@ -195,7 +196,7 @@ public abstract class Client
             // Print the message and go to END
             case MessageType.ERR:
                 StdoutResultWriter.PrintErrMessage((ErrMessage)message);
-                await ErrorExit(false, null, true);
+                await ErrorExit(false, null, true, 1);
                 return true;
 
             // Go to END
@@ -206,7 +207,7 @@ public abstract class Client
             // Print a local error and terminate
             case MessageType.MALFORMED:
                 StdoutResultWriter.InternalClientError(((MalformedMessage)message).MessageContent);
-                await ErrorExit(true, "Malformed message received", true);
+                await ErrorExit(true, "Malformed message received", true, 1);
                 return true;
         }
 
@@ -317,7 +318,7 @@ public abstract class Client
 
         // Wait for the user or the server
         Task<string?> userInputTask = UserInputQueue.Dequeue(readInputCancel.Token);
-        Task<Message> serverInputTask = MessageStorage.WaitForInput(readInputCancel.Token);
+        Task<Message> serverInputTask = ServerInputQueue.Dequeue(readInputCancel.Token);
         Task completedTask = await Task.WhenAny(userInputTask, serverInputTask);
 
         // Cancel the task that did not finish
@@ -356,14 +357,14 @@ public abstract class Client
     {
         // Wait for a message from the server or a timeout
         Task timeoutTask = Task.Delay(5000);
-        Task<Message> serverReplyTask = MessageStorage.WaitForInput(CancellationToken.None);
+        Task<Message> serverReplyTask = ServerInputQueue.Dequeue(CancellationToken.None);
         Task completedTask = await Task.WhenAny(serverReplyTask, timeoutTask);
 
         // Check if the timeout task completed first
         if(completedTask == timeoutTask)
         {
             StdoutResultWriter.InternalClientError("Timeout when waiting for reply to authentication");
-            await ErrorExit(true, "Timeout when waiting for reply to authentication", true);
+            await ErrorExit(true, "Timeout when waiting for reply to authentication", true, 1);
             return;
         }
 
@@ -394,7 +395,7 @@ public abstract class Client
 
         // Tasks for user/server input
         Task<string?> userInputTask = UserInputQueue.Dequeue(readInputCancel.Token);
-        Task<Message> serverInputTask = MessageStorage.WaitForInput(readInputCancel.Token);
+        Task<Message> serverInputTask = ServerInputQueue.Dequeue(readInputCancel.Token);
 
         // Wait for either task to finish
         Task finishedTask = await Task.WhenAny(userInputTask, serverInputTask);
@@ -425,7 +426,7 @@ public abstract class Client
 
             // Reply is valid in this state, but not when waiting for the user to ask for authentication
             else if(message.Type == MessageType.REPLY)
-                await ErrorExit(true, "Reply message received when not waiting for it!", true);
+                await ErrorExit(true, "Reply message received when not waiting for it!", true, 1);
         }
     }
 
@@ -441,8 +442,8 @@ public abstract class Client
             using var cts = new CancellationTokenSource();
 
             // Wait for a message from the server or user input
-            Task<Message> serverInputTask = MessageStorage.WaitForInput(cts.Token);
             Task<string?> userInputTask = UserInputQueue.Dequeue(cts.Token);
+            Task<Message> serverInputTask = ServerInputQueue.Dequeue(cts.Token);
 
             // Wait for the first task to complete
             Task completedTask = await Task.WhenAny(serverInputTask, userInputTask);
@@ -488,52 +489,27 @@ public abstract class Client
     /// </summary>
     private async Task JoinState()
     {
-        // Until something triggers a state change
-        while(ClientState == State.JOIN)
+        /* Stay in this state until:
+            - REPLY message is received --> go to OPEN regardless of the result
+            - Terminating message is received --> go to END or exit the program (TerminatingMessageReceived() handles these cases)
+            - Waiting for a reply timeouts --> Exit the program
+        - If a normal (MSG) message is received, print it and stay in this state
+        */
+
+        // Task representing the timeout
+        Task timeoutTask = Task.Delay(5000);
+
+        // Task waiting for a reply
+        Task replyTask = WaitForReplyJoin();
+
+        // First one of these
+        Task completedTask = await Task.WhenAny(timeoutTask, replyTask);
+
+        // If the timeout task completed first
+        if(completedTask == timeoutTask)
         {
-            // Wait for server input or a timeout
-            Task TimeoutTask = Task.Delay(5000);
-            Task<Message> ServerInputTask = MessageStorage.WaitForInput(CancellationToken.None);
-            Task completedTask = await Task.WhenAny(ServerInputTask, TimeoutTask);
-
-            // Check if the timeout task completed first
-            if(completedTask == TimeoutTask)
-            {
-                StdoutResultWriter.InternalClientError("Timeout when waiting for reply to join a chat channel");
-                await ErrorExit(true, "Timeout when waiting for reply to join a chat channel", true);
-                return;
-            }
-
-            Message message = ServerInputTask.Result;
-
-            // Check if the message is a terminating message
-            if(await TerminatingMessageReceived(message))
-                return;
-
-            // Reply or a normal message
-
-            // Normal message
-            else if(message.Type == MessageType.MSG)
-            {
-                // Print the message
-                StdoutResultWriter.PrintMsgMessage((MsgMessage)message);
-                continue;
-            }
-
-            // Reply from the server
-            else
-            {
-                ReplyMessage reply = (ReplyMessage)message;
-                StdoutResultWriter.PrintReplyMessage(reply);
-
-                // Change chat channel if the reply is positive
-                if(reply.OK) UpdateChannelID(Config.RequestedChannelID!);
-
-                // Set the requested ID to null, change the client state to OPEN and return
-                UpdateRequestedChannelID(null);
-                UpdateState(State.OPEN);
-                return;
-            }
+            StdoutResultWriter.InternalClientError("Timeout when waiting for reply to JOIN");
+            await ErrorExit(true, "Timeout when waiting for reply to JOIN", true, 1);
         }
     }
 
@@ -544,6 +520,45 @@ public abstract class Client
     {
         GracefulTermination();
         Environment.Exit(0);
+    }
+
+
+    /// <summary>
+    /// Waits for a reply message from the server in the JOIN state.
+    /// Needed as a separate task, since in this state other messages are valid when waiting (as opposed to AUTH).
+    /// Here we need to process MSG messages, while in auth if another message came when waiting
+    /// it is invalid, and can be simply handled by stopping waiting and terminating the program.
+    /// </summary>
+    private async Task WaitForReplyJoin()
+    {
+        while(true)
+        {
+            // Wait for a message from the server
+            Message message = await ServerInputQueue.Dequeue(CancellationToken.None);
+
+            // If it's a REPLY
+            if(message.Type == MessageType.REPLY)
+            {
+                // Update current and requested channel ID
+                UpdateChannelID(Config.RequestedChannelID!);
+                UpdateRequestedChannelID(null);
+
+                // Update state
+                UpdateState(State.OPEN);
+
+                // Print the message
+                StdoutResultWriter.PrintReplyMessage((ReplyMessage)message);
+                return;
+            }
+
+            // Normal message, print and stay waiting
+            else if(message.Type == MessageType.MSG)
+                StdoutResultWriter.PrintMsgMessage((MsgMessage)message);
+
+            // Terminating message case
+            else if(await TerminatingMessageReceived(message))
+                return;
+        }
     }
 
     /// <summary>
@@ -574,7 +589,7 @@ public abstract class Client
     /// <param name="errorMessage">Error mesxsage.</param>
     /// <param name="terminateConnection">Whether to terminate the connection.</param>
     /// <param name="exitCode">Exit code.</param>
-    protected async Task ErrorExit(bool sendErrorMessage = false, string? errorMessage = null, bool terminateConnection = false, int exitCode = 1)
+    protected async Task ErrorExit(bool sendErrorMessage, string? errorMessage, bool terminateConnection, int exitCode)
     {
         if(sendErrorMessage)
         {

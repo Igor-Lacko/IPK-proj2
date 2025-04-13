@@ -46,7 +46,7 @@ public class UDPClient : Client
         ServerCommunicator = CreateServerCommunicator();
 
         // Subscribe to events
-        ServerCommunicator.MessageReceived += MessageStorage.OnMessageReceived;
+        ServerCommunicator.MessageReceived += ServerInputQueue.Enqueue;
         ((UDPServerCommunicator)ServerCommunicator).ConfirmTimeouted += OnMessageTimeout;
     }
 
@@ -59,7 +59,7 @@ public class UDPClient : Client
         Timeouted = true;
 
         // Terminate the connection
-        ErrorExit(false, null, false).Wait();
+        ErrorExit(false, null, false, 1).Wait();
     }
 
     /// <summary>

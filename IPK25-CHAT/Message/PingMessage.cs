@@ -14,7 +14,7 @@ public class PingMessage(ushort messageID) : Message(MessageType.PING)
     /// <summary>
     /// ID of the message.
     /// </summary>
-    private ushort MessageID = messageID;
+    private readonly ushort MessageID = messageID;
 
     /// <summary>
     /// Checks if the message is valid in the current client state. Returns true always, since the server only sends this message.

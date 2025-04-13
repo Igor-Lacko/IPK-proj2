@@ -47,7 +47,7 @@ public class ByeMessage(string displayName, ushort messageID = 0) : Message(Mess
         MessageID = messageID;
 
         // Message fields
-        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID!));
+        byte[] messageIDBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)MessageID));
         byte[] displayNameBytes = Encoding.ASCII.GetBytes(DisplayName);
 
         // Serialize into a byte array
