@@ -9,7 +9,7 @@ using IPK_25_CHAT.Enum;
 /// <summary>
 /// Class for the /status command.
 /// </summary>
-public class StatusCommand() : Command(CommandType.STATUS, "/status")
+public class StatusCommand() : Command(CommandType.STATUS)
 {
     /// <summary>
     /// Regular expression for the /status command.

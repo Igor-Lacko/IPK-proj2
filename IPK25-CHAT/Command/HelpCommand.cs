@@ -7,7 +7,7 @@ using IPK_25_CHAT.Enum;
 /// <summary>
 /// HELP command class.
 /// </summary>
-public class HelpCommand() : Command(CommandType.HELP, "/help")
+public class HelpCommand() : Command(CommandType.HELP)
 {
     /// <summary>
     /// Regular expression for the HELP command.

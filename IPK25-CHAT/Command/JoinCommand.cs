@@ -8,7 +8,7 @@ using IPK_25_CHAT.Enum;
 /// JOIN command class.
 /// </summary>
 /// <param name="channelId">Channel ID to join.</param>
-public class JoinCommand(string channelId) : Command(CommandType.JOIN, $"/join {channelId}")
+public class JoinCommand(string channelId) : Command(CommandType.JOIN)
 {
     /// <summary>
     /// Regular expression for the JOIN command.

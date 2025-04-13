@@ -6,7 +6,7 @@ using IPK_25_CHAT.Enum;
 /// <summary>
 /// AUTH command class.
 /// </summary>
-public class AuthCommand(string username, string secret, string displayName) : Command(CommandType.AUTH, $"/auth {username} {secret} {displayName}")
+public class AuthCommand(string username, string secret, string displayName) : Command(CommandType.AUTH)
 {
     /// <summary>
     /// Regular expression for the AUTH command.

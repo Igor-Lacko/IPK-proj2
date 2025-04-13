@@ -10,24 +10,12 @@ using System.Text.RegularExpressions;
 /// Base class for a client command.
 /// </summary>
 /// <param name="type">Command type.</param>
-/// <param name="textualRepresentation">Command as a string (for errors).</param>
-public abstract class Command(CommandType type, string textualRepresentation) : IReadable
+public abstract class Command(CommandType type) : IReadable
 {
     /// <summary>
     /// Command type.
     /// </summary>
     public readonly CommandType Type = type;
-
-    /// <summary>
-    /// Command as a string (for errors).
-    /// </summary>
-    private readonly string TextualRepresentation = textualRepresentation;
-
-    /// <summary>
-    /// Override of ToString. Returns this.AsString.
-    /// </summary>
-    /// <returns>String representation of the command.</returns>
-    public override string ToString() => TextualRepresentation;
 
     /// <summary>
     /// Checks if the command is valid in the current client state.
