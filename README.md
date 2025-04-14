@@ -13,27 +13,25 @@ todo
 
 ### Transmission control protocol (TCP)
 The TCP is a transport layer protocol which is well characterized by reliable delivery
-of data (being able to solve problems such as packet loss), being connection-oriented, and providing a in-order byte stream. [1]. 
-Because of these features, the TCP is commonly utilized in applications that require reliable data transfer 
-(e.g. The World Wide Web, email, file transfer...)[2]. However, the reliablility guarantees can
-introduce significant overhead, which is why the TCP isn't suitable for all use cases.
+of data (being able to solve problems such as packet loss), being connection-oriented, and providing a in-order byte stream [[RFC9293]](#bibliography). 
+Because of these features, the TCP is commonly utilized in applications that require reliable data transfer, web browsing, email or file transfer [[Techtarget]](#bibliography). 
+However, the reliablility guarantees can introduce significant overhead, which is why the TCP isn't suitable for all use cases. The TCP is most recently specified in [[RFC9293]](#bibliography).
 ***
 ### User datagram protocol (UDP)
 The UDP is the less reliable, faster counterpart to TCP. It's characterized by being
 connectionless, meaning it sends and receives messages without maintaining any state
-between it and the receiver (sometimes also called "fire and forget")[3]. This can be partially
+between it and the receiver (sometimes also called "fire and forget") [[Spiceworks]](#bibliography). This can be partially
 "side-stepped" by using connected UDP sockets (described more in the respective subsection).
-As mentioned, it is less reliable than the TCP and it utilizes best-effort delivery, meaning
-it does not guarantee effective delivery of data or any quality of service[4]. The UDP
-is commonly used in applications that do not require strict reliability
-when it comes to data transimission but are more performance-heavy (e.g. realtime applications, such as broadcasting)[3].
+The UDP is commonly used in applications that do not require strict reliability
+when it comes to data transimission but are more performance-heavy (e.g. realtime applications, such as broadcasting) [[Spiceworks]](#bibliography).
+The UDP is most recently specidfied in [[RFC768]](#bibliography).
 
 #### Connected UDP sockets
 Connected UDP sockets are UDP sockets that have a full 4 tuple (e.g. source and destination ip address and port) associated.
 They are preferable for client applications (such as this project) and outbound traffic in general, due to optimizing route
-lookup using a connection struct[5]. In addition to that, in the case of this project they made communication with the server
+lookup using a connection struct [[Cloudflare]](#bibliography). In addition to that, in the case of this project they made communication with the server
 via UDP much more comfortable (described more in the appropriate section). They work by enabling an application to associate
-the socket with the socket name of a peer[6]. This enables the socket to use methods/functions like Receive() and Send() instead
+the socket with the socket name of a peer [[IBM]](#bibliography). This enables the socket to use methods/functions like Receive() and Send() instead
 of ReceiveFrom() or SendTo() since the destination/source is always known.
 
 ## Program usage 
@@ -57,13 +55,13 @@ and third part describe the parts which are unique respectively for the TCP and 
 ### Shared behaviour between variants
 The two variants share most of their behaviour. The main difference is how they communicate with the server. However
 user input processing, FSM logic, classes for commands/messages are the same for both variants, and server input validation 
-according to the current state is mutual for both variants. A high level behaviourof the client is described by the following 
+according to the current state is mutual for both variants. On a high level, the behaviour of the client is described by the following 
 diagram:<br><br> ![Client overview](/UML/IPK-SUMMARY.png)<br><br>
 *Note: In this class diagram (and the following  class diagrams), interfaces are displayed as green, abstract classes as pink, normal classes as blue and structs as red.*
 
 #### Client class
 We can observe that in the diagram, the Client class is the most "important", e.g. connects all the other components of the program
-and handles it's logic on a high level. This class implements a finite state machine[7] representing client behaviour. The class 
+and handles it's logic on a high level. This class implements a finite state machine representing client behaviour. The class 
 runs in a loop and reacts to events, until one of these events ends the program (a BYE message from the server, the user exits, or a invalid message from the server is received). These events are invoked by the classes that compose Client, such as **UserInputReader** or **IServerCommunicator**.
 The client also delegates low-level tasks such as reading user/server input and sending messages to the server to these classes.
 Each state is implemented as one method which reacts to user/server input in a specific way. Each incoming server/user input
@@ -110,11 +108,9 @@ In addition to the **UDPServerCommunicator** as the unique feature, the **UDPCli
 
 
 ## Bibliography
-todo formatting for this and in text citations
-https://datatracker.ietf.org/doc/html/rfc9293#name-introduction
-https://cs.wikipedia.org/wiki/Transmission_Control_Protocol
-https://www.spiceworks.com/tech/networking/articles/tcp-vs-udp/
-https://en.wikipedia.org/wiki/Best-effort_delivery
-https://blog.cloudflare.com/everything-you-ever-wanted-to-know-about-udp-sockets-but-were-afraid-to-ask-part-1/
-https://www.ibm.com/docs/en/zos/2.4.0?topic=functions-connect
-https://git.fit.vutbr.cz/NESFIT/IPK-Projects/src/branch/master/Project_2
+[RFC9293] Eddy, W. *Transmission Control Protocol (TCP)* [online]. August 2022. [cited 2025-04-14]. DOI: 10.17487/RFC9293. Avaliable at: https://datatracker.ietf.org/doc/html/rfc9293#name-introduction<br>
+[Techtarget] Yasar, K. *Transmission Control Protocol (TCP)* [online]. June 2024. [cited 2025-04-14]. Avaliable at: https://www.techtarget.com/searchnetworking/definition/TCP<br>
+[Spiceworks] Basumallick, C. *TCP vs UDP: understanding 10 Key Differences* [online]. April 2022. [cited 2025-04-14]. Avaliable at: https://www.spiceworks.com/tech/networking/articles/tcp-vs-udp/<br>
+[Cloudflare] Majkowski, M. *Everything you ever wanted to know about UDP sockets but were afraid to ask, part 1* [online]. November 2021. [cited 2025-04-14]. Avaliable at: https://blog.cloudflare.com/everything-you-ever-wanted-to-know-about-udp-sockets-but-were-afraid-to-ask-part-1/<br>
+[IBM] *CONNECT* [online]. April 2023. [cited 2025-04-15]. Avaliable at: https://www.ibm.com/docs/en/zos/3.1.0?topic=functions-connect<br>
+[RFC768] Postel, J. *User Datagram Protocol* [online]. [cited 2025-04-15]. DOI: 10.17487/RFC0768. Avaliable at: https://datatracker.ietf.org/doc/html/rfc768
