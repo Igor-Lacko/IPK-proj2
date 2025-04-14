@@ -35,22 +35,23 @@ public class PingMessage(ushort messageID) : Message(MessageType.PING)
     /// Tries to parse a PING message from a byte array.
     /// </summary>
     /// <param name="response">Byte array representing the message.</param>
+    /// <param name="bytesReceived">Number of bytes received.</param>
     /// <param name="message">The resulting PING message if parsed successfully, else null.</param>
     /// <returns>True if parsed successfully, else false.</returns>
-    public static bool TryParse(byte[] response, out PingMessage? message)
+    public static bool TryParse(byte[] response, int bytesReceived, out PingMessage? message)
     {
+        // Has to be exactly |0xFD|MessageID|MessageID|
+        if (bytesReceived != 3)
+        {
+            message = null;
+            return false;
+        }
+
         // Message ID
         ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 1));
         message = new PingMessage(messageID);
         return true;
     }
-
-    /// <summary>
-    /// Throws an exception, since this is a purely binary message.
-    /// </summary>
-    /// <returns>Throws an exception.</returns>
-    /// <exception cref="ArgumentException">Thrown when the method is called.</exception>
-    public override string ToString() => throw new ArgumentException("PING message is not used in textual form.");
 
     /// <summary>
     /// Returns the message ID.

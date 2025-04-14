@@ -57,15 +57,26 @@ public class ByeMessage(string displayName, ushort messageID = 0) : Message(Mess
     /// <summary>
     /// Tries to parse a BYE message from a byte array.
     /// </summary>
-    public static bool TryParse(byte[] response, out ByeMessage? message)
+    /// <param name="response">Byte array containing the message.</param>
+    /// <param name="bytesReceived">Number of bytes received.</param>
+    /// <param name="message">Parsed message if successful, else null.</param>
+    public static bool TryParse(byte[] response, int bytesReceived, out ByeMessage? message)
     {
+        // At least |0xFF|MessageID|MessageID|DisplayName|0|
+        if(bytesReceived < 5)
+        {
+            message = null;
+            return false;
+        }
+
         // Message ID
         ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 1));
 
         // Try to parse the display name
-        _ = ParseDisplayName(response, 3, out bool success, out string? displayName);
+        int endIndex = ParseDisplayName(response, 3, out string? displayName);
 
-        if(!success)
+        // Check for trailing bytes or if it was successful
+        if(endIndex != bytesReceived || displayName == null)
         {
             message = null;
             return false;

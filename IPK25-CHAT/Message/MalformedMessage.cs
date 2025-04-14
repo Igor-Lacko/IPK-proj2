@@ -34,13 +34,6 @@ public class MalformedMessage(string? messageContent) : Message(MessageType.MALF
     }
 
     /// <summary>
-    /// Converts the message to a string. Used for local client errors.
-    /// Will probably not be used, since the message can be null.
-    /// </summary>
-    /// <returns>String representation of the message.</returns>
-    public override string ToString() => MessageContent ?? "Malformed message";
-
-    /// <summary>
     /// Throws an exception, since malformed messages do not have message IDs.
     /// </summary>
     /// <throws exception cref="ArgumentException">Always thrown.</exception>

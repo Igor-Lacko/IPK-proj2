@@ -2,10 +2,10 @@
 
 namespace IPK_25_CHAT.Message;
 
-using System.Net;
-using System.Text;
 using IPK_25_CHAT.Command;
 using IPK_25_CHAT.Enum;
+using System.Text;
+using System.Net;
 
 /// <summary>
 /// Class representing the AUTH message.

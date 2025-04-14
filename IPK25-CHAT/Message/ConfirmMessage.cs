@@ -39,21 +39,22 @@ public class ConfirmMessage(ushort messageID) : Message(MessageType.CONFIRM)
     /// Tries to parse a CONFIRM message from a byte array.
     /// </summary>
     /// <param name="response">The response received.</param>
+    /// <param name="bytesReceived">Number of bytes received.</param>
     /// <param name="message">If parsed succesfully, this contains the outgoing CONFIRM message. Else null.</param>
     /// <returns>True if parsed succesfully, else false.</returns>
-    public static bool TryParse(byte[] response, out ConfirmMessage? message)
+    public static bool TryParse(byte[] response, int bytesReceived, out ConfirmMessage? message)
     {
+        // Has to be exactly |0x00|RefMessageID|RefMessageID|
+        if(bytesReceived != 3)
+        {
+            message = null;
+            return false;
+        }
+
         ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 1));
         message = new ConfirmMessage(messageID);
         return true;
     }
-
-    /// <summary>
-    /// Throws an exception as the CONFIRM message is not used in textual form.
-    /// </summary>
-    /// <returns>Throws an exception.</returns>
-    /// <exception cref="ArgumentException">Thrown when the method is called.</exception>
-    public override string ToString() => throw new ArgumentException("CONFIRM message is not used in textual form.");
 
     /// <summary>
     /// Returns the message ID of the referenced message.

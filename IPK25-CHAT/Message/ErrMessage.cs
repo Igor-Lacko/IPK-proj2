@@ -65,23 +65,33 @@ public class ErrMessage(string displayName, string messageContent, ushort messag
     /// Tries to parse an ERR message from a byte array.
     /// </summary>
     /// <param name="response">Byte array representing the message.</param>
+    /// <param name="bytesReceived">Number of bytes received.</param>
     /// <param name="message">The resulting ERR message if parsed succesfully, else null.</param>
-    public static bool TryParse(byte[] response, out ErrMessage? message)
+    public static bool TryParse(byte[] response, int bytesReceived, out ErrMessage? message)
     {
+        // Has to be at least |0xFE|MessageID|MessageID|DisplayName|0|MessageContent|0|
+        if(bytesReceived < 5)
+        {
+            message = null;
+            return false;
+        }
+
         // Message ID
         ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 1));
 
         // Display name
-        int messageContentStart = ParseDisplayName(response, 3, out bool success, out string? displayName);
-        if(!success)
+        int messageContentStart = ParseDisplayName(response, 3, out string? displayName);
+        if(displayName == null)
         {
             message = null;
             return false;
         }
 
         // Message content
-        string? messageContent = ParseMessageContent(response, messageContentStart, out success);
-        if(!success)
+        int messageContentEnd = ParseMessageContent(response, messageContentStart, out string? messageContent);
+
+        // Check for trailing bytes or invalid content
+        if(messageContent == null || messageContentEnd != bytesReceived)
         {
             message = null;
             return false;

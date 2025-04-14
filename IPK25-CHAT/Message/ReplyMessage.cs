@@ -71,10 +71,18 @@ public class ReplyMessage(bool ok, string messageContent, ushort messageID = 0, 
     /// Tries to parse a REPLY message from a byte array.
     /// </summary>
     /// <param name="response">Byte array representing the message.</param>
+    /// <param name="bytesReceived">Number of bytes received.</param>
     /// <param name="message">The resulting REPLY message if parsed successfully, else null.</param>
     /// <returns>True if parsed successfully, else false.</returns>
-    public static bool TryParse(byte[] response, out ReplyMessage? message)
+    public static bool TryParse(byte[] response, int bytesReceived, out ReplyMessage? message)
     {
+        // Has to be at least |0x01|MessageID|MessageID|OK|RefMessageID|RefMessageID|MessageContent|0|
+        if(bytesReceived < 8)
+        {
+            message = null;
+            return false;
+        }
+
         // Message ID
         ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 1));
 
@@ -94,11 +102,10 @@ public class ReplyMessage(bool ok, string messageContent, ushort messageID = 0, 
 
         // RefMessageID
         ushort refMessageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 4));
-        Console.WriteLine($"RefMessageID: {refMessageID}");
 
         // Try to parse the message content
-        string? messageContent = ParseMessageContent(response, 6, out bool success);
-        if (!success)
+        int messageContentEnd = ParseMessageContent(response, 6, out string? messageContent);
+        if (messageContent == null || messageContentEnd != bytesReceived)
         {
             message = null;
             return false;

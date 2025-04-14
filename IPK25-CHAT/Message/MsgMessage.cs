@@ -65,24 +65,32 @@ public class MsgMessage(string displayName, string messageContent, ushort messag
     /// Tries to parse a MSG message from a byte array.
     /// </summary>
     /// <param name="response">Byte array representing the message.</param>
+    /// <param name="bytesReceived">Number of bytes received.</param>
     /// <param name="message">The resulting MSG message if parsed successfully, else null.</param>
     /// <returns>True if parsed successfully, else false.</returns>
-    public static bool TryParse(byte[] response, out MsgMessage? message)
+    public static bool TryParse(byte[] response, int bytesReceived, out MsgMessage? message)
     {
+        // Has to be at least |0x04|MessageID|MessageID|DisplayName|0|MessageContent|0|
+        if(bytesReceived < 7)
+        {
+            message = null;
+            return false;
+        }
+
         // Message ID
         ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(response, 1));
 
         // Try to parse the display name
-        int messageContentIndex = ParseDisplayName(response, 3, out bool success, out string? displayName);
-        if(!success)
+        int messageContentIndex = ParseDisplayName(response, 3, out string? displayName);
+        if(displayName == null)
         {
             message = null;
             return false;
         }
 
         // Try to parse the message content
-        string? messageContent = ParseMessageContent(response, messageContentIndex, out success);
-        if(!success)
+        int messageContentEnd = ParseMessageContent(response, messageContentIndex, out string? messageContent);
+        if(messageContent == null || messageContentEnd != bytesReceived)
         {
             message = null;
             return false;
