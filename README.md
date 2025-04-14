@@ -39,17 +39,15 @@ of ReceiveFrom() or SendTo() since the destination/source is always known.
 ## Program usage 
 To run the program, follow these steps:
 1. Run `make` in the root folder of this repository
-2. Run `./ipk25chat-client` [ARGS], where [ARGS] are summarized by the following table[7]
+2. Run `./ipk25chat-client` [ARGS], where [ARGS] are:<br>
+    **1. -t**: The protocol to use<br>
+    **2. -s**: The IP address to use (or hostname to be translated into it)<br>
+    **3. -p**: The port of the server. Default value is 4567<br>
+    **4. -d**: The timeout to wait for one confirmation message in the UDP variant. Given in milliseconds. Default value is 250.<br>
+    **5. -r**: Maximum number of UDP retransmissions until a CONFIRM message is received. Default value is 3.<br>
+    **6. -h**: Help argument. Prints the guide top the program and exits.<br>
+    **7. --discord**: Bonus argument, used for integration for the reference discord server. Enables the `discord.CHANNEL_ID` notation in addition to `CHANNEL_ID` notation.<br>
 
-| Argument shortcut | Argument name     | Default value, if any | Note, if any            |
-| ----------------- | ----------------- | --------------------- | ----------------------- |
-| -p                | Port number       | 4567                  | None                    |
-| -s                | Hostname/address  | None, is mandatory    | Can't be a IPv6 address |
-| -t                | Protocol          | None, is mandatory    | None                    |
-| -d                | Timeout           | 250                   | In milliseconds         |
-| -r                | Retransmissions   | 3                     | None                    |
-| -h                | Help              | None, is an option    | Prints help and exits   |
-| --discord         | Discord notation  | None, is an option    | Bonus argument. Enables supporting the extended notation (e.g. `discord.CHANNEL_ID`) for channel id's for compatibility with the reference server. | 
 
 ## Implementation
 The following section describes some interesting parts of the application and how they were solved. The first part
@@ -61,7 +59,7 @@ The two variants share most of their behaviour. The main difference is how they 
 user input processing, FSM logic, classes for commands/messages are the same for both variants, and server input validation 
 according to the current state is mutual for both variants. A high level behaviourof the client is described by the following 
 diagram:<br><br> ![Client overview](/UML/IPK-SUMMARY.png)<br><br>
-*Note: In the diagram (and the following diagrams), interfaces are displayed as green, abstract classes as pink, normal classes as blue and structs as red.*
+*Note: In this class diagram (and the following  class diagrams), interfaces are displayed as green, abstract classes as pink, normal classes as blue and structs as red.*
 
 #### Client class
 We can observe that in the diagram, the Client class is the most "important", e.g. connects all the other components of the program
@@ -72,41 +70,44 @@ Each state is implemented as one method which reacts to user/server input in a s
 is validated (the validness of each input in each state can be seen from the todo link section).
 
 #### User IO
-The process for reading user input is driven by the **UserInputReader**, **UserInputValidator**, and **UserInputQueue** classes.
+The process for reading user input is driven by the **UserInputReader**, **UserInputValidator**, and **InputQueue** classes.
 These can be observed from the diagram above. Upon startup, **UserInputReader** runs a background task which reads user input
-in a loop and raises the *UserInputReceived* event for each input. The client, which is subscribed to this event, passes this
+in a loop and raises the `UserInputReceived` event for each input. The client, which is subscribed to this event, passes this
 input to the **UserInputQueue** class. When the client is ready to process the next user input, it requests it from the queue.
 The queue is internally guarded by a semaphore, which is released once for each enqueued input, ensuring only valid access.
-When the client is ready to process the next user input, it calls the *Dequeue()* method which waits on the semaphore until user input is avaliable.
+When the client is ready to process the next user input, it calls the `Dequeue()` method which waits on the semaphore until user input is avaliable.
 After getting an input, **UserInputValidator** is run by the client to verify whether the user input is acceptable in the current state.
 A variant of this process with a single mesage is visualized by the following sequence diagram:<br><br>![User input processing](/UML/Sequence.png)<br><br>
-*NOTE: Since user input is to be buffered until the client can process it, the user pressing CTRL + C/D is equivalent to enqueuing null. Upon dequeuing null, the client detects this and invokes the OnEofReceived method.*<br>
-*NOTE: the `input` variable in the diagram is of type string?, e.g. still raw input, `validatedInput` is of type IReadable? (null if invalid), so parsed by the validator into a message/command*
+*Note: Since user input is to be buffered until the client can process it, the user pressing CTRL + C/D is equivalent to enqueuing null. Upon processing all previous user inputs and requesting the next one, null is dequeued, upon which the client invokes the OnEofReceived method.*<br>
+
+#### Processing messages with the server
+Although the TCPServerCommunicator and UDPServerCommunicator work differently "under the hood", since their interface is the same the client processes server messages in both variants in the same way. They are both implemented as loops which call the appropriate method for receiving, after that parsing the received content and invoking the **MessageReceived** event. When it comes to sending, both variants contain an async task for sending a message. When it comes to storing server messages, **InputQueue** type is used again, this time with a template parameter of **Message**. Queueing server messages is probably not neccessary, but i chose this option as opposed to just storing the latest message because if two users typed in something at the same time, the last message could be overwritten before the client could process it. This ensures it would get processed sooner or later. In each state, the client either runs a **Task.WhenAny** containing two tasks where one is completed when the next user input is dequeued, one when the next server message is dequeued and reacts appropriately to what he gets first, or a **Task.WhenAny** containing one task waiting for the next server message and the other being a timeout (e.g. cases where the client is waiting for a reply).
 
 #### Input validation
 The **UserInputValidator** class tries to convert a raw input string into a **IReadable**, that is it tries to parse the input
 as a command or a message of type MSG. In addition to that it decides whether the input (if it's structure is decided to be valid) is valid
-at the current client state. Similiar logic is utilized when processing server input, since each **IReadable** instance has a method indicating
-if it is valid in the current state. The following table summarizes at which state the user/server input is acceptable.<br>
-
-| Input   | From    | START   | AUTH                                                          | OPEN    | JOIN    |
-| ------- | ------- | ------- | ------------------------------------------------------------- | ------- | ------- |
-| /auth   | User    | Valid   | Valid, if the previous attempt was unsuccessful, else invalid | Invalid | Invalid |
-| /join   | User    | Invalid | Invalid                                                       | Valid   | Valid   |
-| /rename | User    | Valid   | Valid                                                         | Valid   | Valid   |
-| /help   | User    | Valid   | Valid                                                         | Valid   | Valid   |
-| /status | User    | Valid   | Valid                                                         | Valid   | Valid   |
-| MSG     | Both    | Invalid | Invalid                                                       | Valid   | Valid   |
-| REPLY   | Server  | Invalid | Valid if waiting for a reply, else invalid                    | Invalid | Valid   |
-| CONFIRM | Server  | Ignored | Valid                                                         | Valid   | Valid   |
-| PING    | Server  | Valid   | Valid                                                         | Valid   | Valid   |
-
-<br><br>
-*NOTE: ERR and BYE are always marked as valid, e.g. processed normally*<br>
-*NOTE: /join is valid in JOIN because it is enqueued and will be processed in OPEN anyway*
+at the current client state. Similiar logic is utilized when processing server input, since each **IReadable** instance has a `IsValid(State clientState)`
+method indicating if it is valid in the current state. 
 
 #### Message and Command classes and their types
-The following diagram shows more in depth how messages and commands are represented in the program:<br><br>todo
+The following diagram shows more in depth how messages and commands are represented in the program:<br><br>![IReadable diagram](/UML/IReadable.png)<br><br>
+Each message/command type has it's own subclass. In addition to the before mentioned validation method, each type has it's own parameters. Messages that can be sent from
+the client also have impelementations of `ToString()` and `AsBytes()` methods, which convert the message to a format suitable for sending to the server in the given protocol.
+Messages that can be received from the server also have either a regular expression (TCP) or a parsing method (UDP) which is used to identify incoming messages from the server.
+The **MalformedMessage** type is used to represent messages that don't fit into any other type.
+
+### The TCP variant
+#### Class diagram for this variant
+![TCPServerCommunicator](/UML/TCPCommunicator.png)
+#### Description of the unique features of this variant
+The only non-shared feature in the TCP variant is the **TCPServerCommunicator**. It works by running in a loop until it's cancellation token source is cancelled. It utilizes **StreamReader** and **StreamWriter** to comfortably read and write messages in a textual form from the server. The `GetMessage()` method is used to receive messages, which works by reading one char at a time from the server (into a buffer of size one) until the last two characters received are `\r\n` (CRLF). This approach may be slower than reading more at once, but seemed like the least error-prone and safest option. Upon reaching CRLF, the method returns the received string to the main loop which calls `Message.Parse()`, which tries to parse the message using regular expressions for each message type. If it fails to do so, it returns a **MalformedMessage** object, upon which the client reacts by terminating the connection.
+
+### The UDP variant
+#### Class diagram for this variant
+![UDPServerCommunicator](/UML/UDPCommunicator.png)
+#### Description of the unique features of this variant
+In addition to the **UDPServerCommunicator** as the unique feature, the **UDPClient** class also overrides some methods from the superclass, concretely the parts where user input is processed and a message is sent, since the client has to get a confirmation. In case it doesn't, the **OnMessageTimeout** method is invoked, which ends the program with an error code. When it comes to the communication with the server, the **UDPServerCommunicator** utilizes a connected UDP socket. At first, when sending the initial AUTH message, the socket is unconnected. For this period, `SendToAsync()` and `ReceiveFromAsync()` are used for communication. Each incoming datagram's sender IP address is then inspected, and if it does not match the server's, the datagram is dropped. When the server sends a datagram to the client from the allocated port, the communicator calls `Connect()` and maintains this connection for the rest of the program run. This allows the communicator to call methods like `ReceiveAsync()` and `SendAsync()` and not worry about where the datagrams may come from or arrive at. An issue the communicator has to solve is message confirmation. For this, it keeps a dictionary of sent messages (which will probably always have a size of 1, since the communicator waits for confirmation before sending another message). The key is their ID and the value is a **MessageStateInformation** structure. This structure contains a task completion source which is set to true when the message is confirmed, and it's task, which is awaited until the message is confirmed (or it times out). On confirm, key value pairs with the key being the confirmed message ID are removed from the dictionary, unless they are request messages (AUTH or JOIN) where they are removed after a confirm and a reply. Confirm or reply messages that have invalid ref message ID's are dropped. On a timeout confirm, a **ConfirmTimeouted** event is invoked, leading to the client terminating the program. Incoming datagrams are processed by calling `Message.Parse()` which calls the parsing method for each message type and returns the result (or a **MalformedMessage** object). Then the communicator either invokes the **MessageReceived** event, or just sends a confirm (in the case of a PING message) or sets a task waiting for confirmation to completed (in the case of a CONFIRM message).
+
 
 ## Bibliography
 todo formatting for this and in text citations
