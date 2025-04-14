@@ -57,7 +57,7 @@ public class TCPServerCommunicator : IServerCommunicator
     /// <summary>
     /// Cancellation token source. Cancels the server communicator at the end of the program.
     /// </summary>
-    public CancellationTokenSource ServerInputCancellationToken { get; } = new();
+    public CancellationTokenSource ServerInputCancellationTokenSource { get; } = new();
 
     public TCPServerCommunicator(IPAddress host, ushort port)
     {
@@ -91,7 +91,7 @@ public class TCPServerCommunicator : IServerCommunicator
     /// Reads one message from the server.
     /// </summary>
     /// <returns>String representing the message.</returns>
-    public async Task<string> GetMessage(CancellationToken token)
+    public async Task<string> GetMessage()
     {
         List<char> message = [];
         Memory<char> current = new char[1];
@@ -103,10 +103,10 @@ public class TCPServerCommunicator : IServerCommunicator
         while (!done)
         {
             // Read one character
-            int bytesRead = await TCPReader!.ReadAsync(current, token);
+            int bytesRead = await TCPReader!.ReadAsync(current, ServerInputCancellationTokenSource.Token);
 
             // Check for cancellation
-            token.ThrowIfCancellationRequested();
+            ServerInputCancellationTokenSource.Token.ThrowIfCancellationRequested();
 
             if (bytesRead == 0)
                 break;
@@ -139,12 +139,12 @@ public class TCPServerCommunicator : IServerCommunicator
     /// </summary>
     public void Run() => Task.Run(async () =>
     {
-        while (!ServerInputCancellationToken.Token.IsCancellationRequested)
+        while (!ServerInputCancellationTokenSource.Token.IsCancellationRequested)
         {
             // Parsing is done separately
             try
             {
-                string input = await GetMessage(ServerInputCancellationToken.Token);
+                string input = await GetMessage();
                 Message message = Message.Parse(input);
                 MessageReceived.Invoke(message);
             }
@@ -161,7 +161,7 @@ public class TCPServerCommunicator : IServerCommunicator
     /// </summary>
     public void Close()
     {
-        ServerInputCancellationToken.Cancel();
+        ServerInputCancellationTokenSource.Cancel();
         TCPReader.Close();
         TCPWriter.Close();
         TCPStream.Close();

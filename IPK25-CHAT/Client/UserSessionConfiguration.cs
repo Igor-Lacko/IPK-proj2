@@ -3,8 +3,11 @@
 namespace IPK_25_CHAT.Client;
 
 /// <summary>
-/// class that contains data representing one client session.
+/// Class that contains data representing one client session.
 /// </summary>
+/// <param name="username">Username</param>
+/// <param name="displayName">Current display name (default is "unknown")</param>
+/// <param name="channelID">Channel that the user is currently in</param>
 public class UserSessionConfiguration(string? username = null, string? displayName = null, string? channelID = null)
 {
     /// <summary>

@@ -31,12 +31,11 @@ public class InputQueue<T>
     /// Wrapper on dequeueing input.
     /// </summary>
     /// <returns>input from the queue.</returns>
-    public async Task<T> Dequeue(CancellationToken? token = null)
+    public async Task<T> Dequeue(CancellationToken token)
     {
         try
         {
-            if(token == null) await QueueGuardian.WaitAsync();
-            else await QueueGuardian.WaitAsync((CancellationToken)token!);
+            await QueueGuardian.WaitAsync(token);
             return InQueue.Dequeue();
         }
 

@@ -177,7 +177,7 @@ public abstract class Client
     /// Enqueues the given input.
     /// </summary>
     /// <param name="input">The given input from the user.</param>
-    private void OnUserInputReceived(string? input) => UserInputQueue.Enqueue(input);
+    protected void OnUserInputReceived(string? input) => UserInputQueue.Enqueue(input);
 
     /// <summary>
     /// Called to check if a message from the server is terminating the connection.
@@ -188,7 +188,7 @@ public abstract class Client
     {
         // Invalid message for the given state
         if(!message.IsValid(ClientState))
-            await ErrorExit(true, $"Invalid message type {message.Type} in state {ClientState}", true, 1);
+            await ErrorExit(true, $"Invalid message type {message.Type} in state {ClientState}", 1);
 
         // Maybe ERR/BYE/MALFORMED
         switch(message.Type)
@@ -196,7 +196,7 @@ public abstract class Client
             // Print the message and go to END
             case MessageType.ERR:
                 StdoutResultWriter.PrintErrMessage((ErrMessage)message);
-                await ErrorExit(false, null, true, 1);
+                await ErrorExit(false, null, 1);
                 return true;
 
             // Go to END
@@ -207,7 +207,7 @@ public abstract class Client
             // Print a local error and terminate
             case MessageType.MALFORMED:
                 StdoutResultWriter.InternalClientError(((MalformedMessage)message).MessageContent);
-                await ErrorExit(true, "Malformed message received", true, 1);
+                await ErrorExit(true, "Malformed message received", 1);
                 return true;
         }
 
@@ -364,7 +364,7 @@ public abstract class Client
         if(completedTask == timeoutTask)
         {
             StdoutResultWriter.InternalClientError("Timeout when waiting for reply to authentication");
-            await ErrorExit(true, "Timeout when waiting for reply to authentication", true, 1);
+            await ErrorExit(true, "Timeout when waiting for reply to authentication", 1);
             return;
         }
 
@@ -426,7 +426,7 @@ public abstract class Client
 
             // Reply is valid in this state, but not when waiting for the user to ask for authentication
             else if(message.Type == MessageType.REPLY)
-                await ErrorExit(true, "Reply message received when not waiting for it!", true, 1);
+                await ErrorExit(true, "Reply message received when not waiting for it!", 1);
         }
     }
 
@@ -509,7 +509,7 @@ public abstract class Client
         if(completedTask == timeoutTask)
         {
             StdoutResultWriter.InternalClientError("Timeout when waiting for reply to JOIN");
-            await ErrorExit(true, "Timeout when waiting for reply to JOIN", true, 1);
+            await ErrorExit(true, "Timeout when waiting for reply to JOIN", 1);
         }
     }
 
@@ -587,18 +587,14 @@ public abstract class Client
     /// </summary>
     /// <param name="sendErrorMessage">Whether to send an ERR message to the server.</param>
     /// <param name="errorMessage">Error mesxsage.</param>
-    /// <param name="terminateConnection">Whether to terminate the connection.</param>
     /// <param name="exitCode">Exit code.</param>
-    protected async Task ErrorExit(bool sendErrorMessage, string? errorMessage, bool terminateConnection, int exitCode)
+    protected async Task ErrorExit(bool sendErrorMessage, string? errorMessage, int exitCode)
     {
         if(sendErrorMessage)
         {
             errorMessage ??= "unknown error";   // This should never happen
             await ServerCommunicator.SendMessage(new ErrMessage(Config.DisplayName!, errorMessage));
         }
-
-        if(terminateConnection)
-            await ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
 
         GracefulTermination();
 

@@ -56,7 +56,7 @@ public class UDPServerCommunicator : IServerCommunicator
     /// <summary>
     /// Current message ID, starting from 0.
     /// </summary>
-    private ushort currentMessageId = 0;
+    private ushort CurrentMessageID = 0;
 
     /// <summary>
     /// The event thrown when a message is received from the server when receiving in a loop.
@@ -78,7 +78,7 @@ public class UDPServerCommunicator : IServerCommunicator
     /// <summary>
     /// Cancellation token source. Cancels the server communicator at the end of the program.
     /// </summary>
-    public CancellationTokenSource ServerInputCancellationToken { get; } = new();
+    public CancellationTokenSource ServerInputCancellationTokenSource { get; } = new();
 
     /// <summary>
     /// Constructor for the UDPServerCommunicator class.
@@ -105,7 +105,7 @@ public class UDPServerCommunicator : IServerCommunicator
     {
         try
         {
-            ServerInputCancellationToken.Cancel();
+            ServerInputCancellationTokenSource.Cancel();
             UdpSocket.Shutdown(SocketShutdown.Both);
             UdpSocket.Close();
         }
@@ -121,16 +121,20 @@ public class UDPServerCommunicator : IServerCommunicator
     /// </summary>
     public void Run() => Task.Run(async () =>
     {
-        while(!ServerInputCancellationToken.IsCancellationRequested)
+        while(!ServerInputCancellationTokenSource.IsCancellationRequested)
         {
             // Buffer to store the response, use the max MTU size
             byte[] buffer = new byte[1500];
+
+            // Bytes received
+            int bytesReceived = 0;
 
             // Filter out depending on if the socket is connected or not
             if(!UdpSocket!.Connected)
             {
                 // Receive the message
                 SocketReceiveFromResult result = await UdpSocket!.ReceiveFromAsync(buffer, new IPEndPoint(IPAddress.Any, 0));
+                bytesReceived = result.ReceivedBytes;
 
                 // Either the opening port or the dynamically allocated server port
                 IPEndPoint remoteEndPoint = (IPEndPoint)result.RemoteEndPoint;
@@ -151,10 +155,10 @@ public class UDPServerCommunicator : IServerCommunicator
             }
 
             // If the socket is connected, we can just use ReceiveAsync()
-            else await UdpSocket!.ReceiveAsync(buffer);
+            else bytesReceived = await UdpSocket.ReceiveAsync(buffer);
 
-            // Parse the mesasge and handle it
-            await HandleReceivedMessage(Message.Parse(buffer));
+            // Parse the message and handle it
+            await HandleReceivedMessage(Message.Parse(buffer, bytesReceived));
         }
     });
 
@@ -164,7 +168,7 @@ public class UDPServerCommunicator : IServerCommunicator
     /// Here we need to handle CONFIRM and PING internally, while checking for already seen message IDs. 
     /// </summary>
     /// <param name="message">The message to handle.</param>
-    public async Task HandleReceivedMessage(Message message)
+    private async Task HandleReceivedMessage(Message message)
     {
         // No checks needed here
         if(message.Type == MessageType.MALFORMED)
@@ -235,7 +239,7 @@ public class UDPServerCommunicator : IServerCommunicator
     /// Kept separate from the SendMessage method, since we don't need to wait for CONFIRM to be, well, confirmed.
     /// </summary>
     /// <param name="messageID">ID of the message to confirm.</param>
-    public async Task SendConfirm(ushort messageID)
+    private async Task SendConfirm(ushort messageID)
     {
         await SendGuardian.WaitAsync();
 
@@ -256,10 +260,10 @@ public class UDPServerCommunicator : IServerCommunicator
     public async Task SendMessage(Message message)
     {
         // Wait for access to sending
-        await SendGuardian.WaitAsync(ServerInputCancellationToken.Token);
+        await SendGuardian.WaitAsync(ServerInputCancellationTokenSource.Token);
 
         // Current message ID
-        ushort messageID = currentMessageId++;
+        ushort messageID = CurrentMessageID++;
 
         // Create a object for the state of the message
         MessageStateInformation messageState = new(messageID, new TaskCompletionSource<bool>(), message.Type == MessageType.AUTH || message.Type == MessageType.JOIN);

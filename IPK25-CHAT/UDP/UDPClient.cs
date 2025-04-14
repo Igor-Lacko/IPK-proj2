@@ -16,12 +16,12 @@ public class UDPClient : Client
     /// <summary>
     /// Number of retransmissions for the UDP client.
     /// </summary>
-    private ushort NumberOfRetransmissions;
+    private readonly ushort NumberOfRetransmissions;
 
     /// <summary>
     /// Timeout when waiting for CONFIRM
     /// </summary>
-    private ushort Timeout;
+    private readonly ushort Timeout;
 
     /// <summary>
     /// Flag indicating if a sent message timeouted.
@@ -37,12 +37,8 @@ public class UDPClient : Client
     /// <param name="timeout">Timeout for one confirm attempt.</param>
     public UDPClient(IPAddress host, ushort port, ushort numberOfRetransmissions, ushort timeout) : base(host, port)
     {
-        Host = host;
-        Port = port;
         NumberOfRetransmissions = numberOfRetransmissions;
         Timeout = timeout;
-
-        // Create the server communicator
         ServerCommunicator = CreateServerCommunicator();
 
         // Subscribe to events
@@ -59,7 +55,7 @@ public class UDPClient : Client
         Timeouted = true;
 
         // Terminate the connection
-        ErrorExit(false, null, false, 1).Wait();
+        ErrorExit(false, null, 1).Wait();
     }
 
     /// <summary>
