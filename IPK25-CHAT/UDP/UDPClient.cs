@@ -7,6 +7,7 @@ using IPK_25_CHAT.Command;
 using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Enum;
 using System.Net;
+using IPK_25_CHAT.IO;
 
 /// <summary>
 /// Class representing a UDP client.
@@ -51,11 +52,14 @@ public class UDPClient : Client
     /// </summary>
     private void OnMessageTimeout()
     {
+        // Local error
+        StdoutResultWriter.InternalClientError("Message did not receive a CONFIRM in time!");
+
         // For the other methods
         Timeouted = true;
 
         // Terminate the connection
-        ErrorExit(false, null, 1).Wait();
+        ErrorExit(false, null, ExitCodes.UDP_CONFIRM_TIMEOUT).Wait();
     }
 
     /// <summary>

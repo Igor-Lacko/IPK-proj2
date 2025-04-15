@@ -3,6 +3,7 @@
 using System.Net;
 using System.Net.Sockets;
 using IPK_25_CHAT.Command;
+using IPK_25_CHAT.Enum;
 
 namespace IPK_25_CHAT.Arguments;
 
@@ -18,10 +19,11 @@ public static class CommandLineArgumentParser
     {
         Console.WriteLine("Usage: ./ipk25chat-client -t [PROTOCOL] -s [ADDRESS|HOSTNAME] OPTIONS, where OPTIONS are:");
         Console.WriteLine("  -p [PORT]          Server port number. Default is 4567");
-        Console.WriteLine("  -w [TIMEOUT]       UDP confirmation timeout in milliseconds. Default is 250");
+        Console.WriteLine("  -d [TIMEOUT]       UDP confirmation timeout in milliseconds. Default is 250");
         Console.WriteLine("  -r [RETRANSMISSIONS] Max number of UDP retransmissions. Default is 3");
+        Console.WriteLine("  --discord         Extra argument. Enables Discord notation for channel id's, is turned off by default.");
         Console.WriteLine("  --help             Prints this help and exits");
-        Environment.Exit(0);
+        Environment.Exit((int)ExitCodes.SUCCESS);
     }
 
     /// <summary>

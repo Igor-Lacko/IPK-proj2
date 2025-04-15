@@ -7,6 +7,7 @@ using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Enum;
 using System.Net;
 using System.Net.Sockets;
+using IPK_25_CHAT.IO;
 
 /// <summary>
 /// Class for UDP communication with the server.
@@ -141,7 +142,16 @@ public class UDPServerCommunicator : IServerCommunicator
                     Port = (ushort)remoteEndPoint.Port;
 
                     // Connected UDP socket to only receive messages from the server
-                    UdpSocket.Connect(new IPEndPoint(Host, Port));
+                    try
+                    {
+                        UdpSocket.Connect(new IPEndPoint(Host, Port));
+                    }
+
+                    catch(SocketException e)
+                    {
+                        StdoutResultWriter.InternalClientError($"Failed to connect: {e.Message}");
+                        Environment.Exit((int)ExitCodes.ERROR_OTHER);
+                    }
                 }
             }
 

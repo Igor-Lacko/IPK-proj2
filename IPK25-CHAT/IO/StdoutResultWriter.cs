@@ -53,5 +53,6 @@ public static class StdoutResultWriter
         Console.WriteLine("----/join {CHANNEL_ID} : Join a channel.");
         Console.WriteLine("----/rename {DISPLAY_NAME} : Rename yourself.");
         Console.WriteLine("----/help : Show this help message.");
+        Console.WriteLine("----/status : Show current connection status.");
     }
 }

@@ -87,11 +87,10 @@ public abstract class Client
     /// </summary>
     protected async Task OnEofReceived()
     {
-        if(ClientState == State.START) Environment.Exit(0);
-        else if (ClientState != State.END)
+        if (ClientState != State.END)
             await ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
         GracefulTermination();
-        Environment.Exit(0);
+        Environment.Exit((int)ExitCodes.SUCCESS);
     }
 
     /// <summary>
@@ -188,7 +187,10 @@ public abstract class Client
     {
         // Invalid message for the given state
         if(!message.IsValid(ClientState))
-            await ErrorExit(true, $"Invalid message type {message.Type} in state {ClientState}", 1);
+        {
+            StdoutResultWriter.InternalClientError($"Invalid message {message.Type} for state {ClientState}");
+            await ErrorExit(true, $"Invalid message type {message.Type} in state {ClientState}", ExitCodes.INVALID_MESSAGE);
+        }
 
         // Maybe ERR/BYE/MALFORMED
         switch(message.Type)
@@ -196,7 +198,7 @@ public abstract class Client
             // Print the message and go to END
             case MessageType.ERR:
                 StdoutResultWriter.PrintErrMessage((ErrMessage)message);
-                await ErrorExit(false, null, 1);
+                await ErrorExit(false, null, ExitCodes.ERR_RECEIVED);
                 return true;
 
             // Go to END
@@ -206,8 +208,8 @@ public abstract class Client
 
             // Print a local error and terminate
             case MessageType.MALFORMED:
-                StdoutResultWriter.InternalClientError(((MalformedMessage)message).MessageContent);
-                await ErrorExit(true, "Malformed message received", 1);
+                StdoutResultWriter.InternalClientError("Malformed message received");
+                await ErrorExit(true, "Malformed message received", ExitCodes.MALFORMED_MESSAGE_RECEIVED);
                 return true;
         }
 
@@ -364,7 +366,7 @@ public abstract class Client
         if(completedTask == timeoutTask)
         {
             StdoutResultWriter.InternalClientError("Timeout when waiting for reply to authentication");
-            await ErrorExit(true, "Timeout when waiting for reply to authentication", 1);
+            await ErrorExit(true, "Timeout when waiting for reply to authentication", ExitCodes.REPLY_TIMEOUT);
             return;
         }
 
@@ -426,7 +428,10 @@ public abstract class Client
 
             // Reply is valid in this state, but not when waiting for the user to ask for authentication
             else if(message.Type == MessageType.REPLY)
-                await ErrorExit(true, "Reply message received when not waiting for it!", 1);
+            {
+                StdoutResultWriter.InternalClientError("Reply message received when not waiting for it!");
+                await ErrorExit(true, "Reply message received when not waiting for it!", ExitCodes.INVALID_MESSAGE);
+            }
         }
     }
 
@@ -509,7 +514,7 @@ public abstract class Client
         if(completedTask == timeoutTask)
         {
             StdoutResultWriter.InternalClientError("Timeout when waiting for reply to JOIN");
-            await ErrorExit(true, "Timeout when waiting for reply to JOIN", 1);
+            await ErrorExit(true, "Timeout when waiting for reply to JOIN", ExitCodes.REPLY_TIMEOUT);
         }
     }
 
@@ -588,7 +593,7 @@ public abstract class Client
     /// <param name="sendErrorMessage">Whether to send an ERR message to the server.</param>
     /// <param name="errorMessage">Error mesxsage.</param>
     /// <param name="exitCode">Exit code.</param>
-    protected async Task ErrorExit(bool sendErrorMessage, string? errorMessage, int exitCode)
+    protected async Task ErrorExit(bool sendErrorMessage, string? errorMessage, ExitCodes exitCode)
     {
         if(sendErrorMessage)
         {
@@ -598,6 +603,6 @@ public abstract class Client
 
         GracefulTermination();
 
-        Environment.Exit(exitCode);
+        Environment.Exit((int)exitCode);
     }
 }

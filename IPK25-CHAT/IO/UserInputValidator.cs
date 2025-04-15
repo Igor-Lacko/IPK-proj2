@@ -56,6 +56,13 @@ public class UserInputValidator
             return null;
         }
 
+        // Truncate the input if it is too long
+        if(input.Length > 60000)
+        {
+            StdoutResultWriter.InternalClientError($"Message too long. Truncating to 60000");
+            input = input[..60000];
+        }
+
         // Check if the message is valid
         MsgMessage msg = new(Config.DisplayName, input);
         if(!msg.IsValid(ClientState))

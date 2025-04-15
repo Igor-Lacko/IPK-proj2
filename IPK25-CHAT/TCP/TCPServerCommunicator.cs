@@ -7,6 +7,7 @@ using IPK_25_CHAT.Message;
 using IPK_25_CHAT.Interface;
 using System.Net;
 using System.Net.Sockets;
+using IPK_25_CHAT.Enum;
 
 /// <summary>
 /// Class for communication with the server via TCP.
@@ -77,7 +78,7 @@ public class TCPServerCommunicator : IServerCommunicator
         catch (SocketException e)
         {
             StdoutResultWriter.InternalClientError($"Failed to connect: {e.Message}");
-            Environment.Exit(1);
+            Environment.Exit((int)ExitCodes.ERROR_OTHER);
         }
     }
 
