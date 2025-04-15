@@ -59,7 +59,7 @@ public abstract class Message(MessageType type) : IReadable
         // REPLY (OK|NOK) IS CONTENT
         else if(replyMatch.Success)
         {
-            bool ok = Regex.Split(message, @"\s+")[1] == "OK";
+            bool ok = Regex.Split(message, @"\s+")[1].ToUpper() == "OK";
             return new ReplyMessage(ok, replyMatch.Groups["MESSAGE_CONTENT"].Value);
         }
 

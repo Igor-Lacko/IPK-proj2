@@ -16,7 +16,7 @@ public class ByeMessage(string displayName, ushort messageID = 0) : Message(Mess
     /// <summary>
     /// Regular expression for the textual version of the BYE message.
     /// </summary>
-    public const string Format = @$"^BYE FROM (?<DISPLAY_NAME>{ParameterFormats.DISPLAY_NAME})$";
+    public const string Format = @$"(?i)^BYE FROM (?<DISPLAY_NAME>{ParameterFormats.DISPLAY_NAME})$";
 
     /// <summary>
     /// Display name of the user.

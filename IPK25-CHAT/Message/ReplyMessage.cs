@@ -23,7 +23,7 @@ public class ReplyMessage(bool ok, string messageContent, ushort messageID = 0, 
     /// <summary>
     /// Regular expression for the textual version of the REPLY message.
     /// </summary>
-    public const string Format = @$"^REPLY (OK|NOK) IS (?<MESSAGE_CONTENT>{ParameterFormats.MESSAGE_CONTENT})$";
+    public const string Format = @$"(?i)^REPLY (OK|NOK) IS (?<MESSAGE_CONTENT>{ParameterFormats.MESSAGE_CONTENT})$";
 
     /// <summary>
     /// If this is true, it indicates that the message is a positive reply, negative otherwise.
