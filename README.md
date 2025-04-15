@@ -57,7 +57,18 @@ The two variants share most of their behaviour. The main difference is how they 
 user input processing, FSM logic, classes for commands/messages are the same for both variants, and server input validation 
 according to the current state is mutual for both variants. On a high level, the behaviour of the client is described by the following 
 diagram:<br><br> ![Client overview](/UML/IPK-SUMMARY.png)<br><br>
-*Note: In this class diagram (and the following  class diagrams), interfaces are displayed as green, abstract classes as pink, normal classes as blue and structs as red.*
+*Note: In this class diagram (and the following  class diagrams), interfaces are displayed as green, abstract classes as pink, normal classes as blue and structs as red.*<br>
+The two variants also share the same exit codes. These are:<br>
+
+| Exit code | Description                                                       |
+| --------- | ----------------------------------------------------------------- |
+| 0         | Success, normal program run                                       |
+| 10        | An ERR message was received from the server                       |
+| 20        | A malformed message was received from the server                  |
+| 30        | A UDP message did not receive a CONFIRM response in time          |
+| 40        | A request message did not receive a reply in time                 |
+| 50        | A message received from server is not valid in the current state  |
+| 60        | All other errors (for example a connection refused)               |
 
 #### Client class
 We can observe that in the diagram, the Client class is the most "important", e.g. connects all the other components of the program
@@ -104,9 +115,349 @@ The only non-shared feature in the TCP variant is the **TCPServerCommunicator**.
 #### Class diagram for this variant
 ![UDPServerCommunicator](/UML/UDPCommunicator.png)
 #### Description of the unique features of this variant
-In addition to the **UDPServerCommunicator** as the unique feature, the **UDPClient** class also overrides some methods from the superclass, concretely the parts where user input is processed and a message is sent, since the client has to get a confirmation. In case it doesn't, the **OnMessageTimeout** method is invoked, which ends the program with an error code. When it comes to the communication with the server, the **UDPServerCommunicator** utilizes a connected UDP socket. At first, when sending the initial AUTH message, the socket is unconnected. For this period, `SendToAsync()` and `ReceiveFromAsync()` are used for communication. Each incoming datagram's sender IP address is then inspected, and if it does not match the server's, the datagram is dropped. When the server sends a datagram to the client from the allocated port, the communicator calls `Connect()` and maintains this connection for the rest of the program run. This allows the communicator to call methods like `ReceiveAsync()` and `SendAsync()` and not worry about where the datagrams may come from or arrive at. An issue the communicator has to solve is message confirmation. For this, it keeps a dictionary of sent messages (which will probably always have a size of 1, since the communicator waits for confirmation before sending another message). The key is their ID and the value is a **MessageStateInformation** structure. This structure contains a task completion source which is set to true when the message is confirmed, and it's task, which is awaited until the message is confirmed (or it times out). On confirm, key value pairs with the key being the confirmed message ID are removed from the dictionary, unless they are request messages (AUTH or JOIN) where they are removed after a confirm and a reply. Confirm or reply messages that have invalid ref message ID's are dropped. On a timeout confirm, a **ConfirmTimeouted** event is invoked, leading to the client terminating the program. Incoming datagrams are processed by calling `Message.Parse()` which calls the parsing method for each message type and returns the result (or a **MalformedMessage** object). Then the communicator either invokes the **MessageReceived** event, or just sends a confirm (in the case of a PING message) or sets a task waiting for confirmation to completed (in the case of a CONFIRM message).
+In addition to the **UDPServerCommunicator** as the unique feature, the **UDPClient** class also overrides some methods from the superclass, concretely the parts where user input is processed and a message is sent, since the client has to get a confirmation. In case it doesn't, the **OnMessageTimeout** method is invoked, which ends the program with an error code. When it comes to the communication with the server, the **UDPServerCommunicator** utilizes a connected UDP socket. At first, when sending the initial AUTH message, the socket is unconnected. For this period, `SendToAsync()` and `ReceiveFromAsync()` are used for communication. Each incoming datagram's sender IP address is then inspected, and if it does not match the server's, the datagram is dropped. When the server sends a datagram to the client from the allocated port, the communicator calls `Connect()` and maintains this connection for the rest of the program run. This allows the communicator to call methods like `ReceiveAsync()` and `SendAsync()` and not worry about where the datagrams may come from or arrive at. An issue the communicator has to solve is message confirmation. For this, it keeps a dictionary of sent messages (which will probably always have a size of 1, since the communicator waits for confirmation before sending another message, except CONFIRM which the communicator sends without waiting). The key is their ID and the value is a **MessageStateInformation** structure. This structure contains a task completion source which is set to true when the message is confirmed, and it's task, which is awaited until the message is confirmed (or it times out). On confirm, key value pairs with the key being the confirmed message ID are removed from the dictionary, unless they are request messages (AUTH or JOIN) where they are removed after a confirm and a reply. Confirm or reply messages that have invalid ref message ID's are dropped. On a message confirmation timeout, a **ConfirmTimeouted** event is invoked, leading to the client terminating the program. Incoming datagrams are processed by calling `Message.Parse()` which calls the parsing method for each message type and returns the result (or a **MalformedMessage** object). Then the communicator either invokes the **MessageReceived** event, or just sends a confirm (in the case of a PING message) or sets a task waiting for confirmation to completed (in the case of a CONFIRM message).
 
+## Testing
+The program was tested on several scenarios, manually and with input piped from a file (found in the TestInputs/). It's split into basic test cases and cases for the appropriate variants. In general, testing for both variants can be split into 2 parts --> functionality (e.g. sending and receiving messages) and invalid cases, where the client is supposed to either terminate with a error code or show a local error.
 
+### Basic test cases
+These test cases describe very basic client functionality --> that it reacts to user commands, terminates correctly, etc.
+#### Test case 1: Terminate with EOF
+**Program startup**: 
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567 < Test/TestInputs/empty_file
+```
+
+**Netcat output**:
+```
+BYE FROM Unknown
+```
+
+#### Test case 2: Terminate with CTRL+C
+**Program startup**:
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567
+    // Followed by CTRL + C in the client's terminal 
+```
+
+**Netcat output**:
+```
+BYE FROM Unknown
+```
+
+#### Test case 3: Help command
+**Program startup**:
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567 < Test/TestInputs/help_command
+```
+
+**Client output**:
+```
+Supported commands:
+----/auth {USERNAME} {SECRET} {DISPLAY_NAME} : Authenticate to the server.
+----/join {CHANNEL_ID} : Join a channel.
+----/rename {DISPLAY_NAME} : Rename yourself.
+----/help : Show this help message.
+----/status : Show current connection status.
+```
+
+**Netcat output**:
+```
+BYE FROM Unknown
+```
+
+### TCP testing
+For TCP testing, netcat was used as a mock server to communicate with the client. Since this variant is textual, nothing extra was needed.
+
+### Functionality
+### Test case 1: Succesful authentication
+**Program startup**:
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567 < TestInputs/auth
+    // Followed by typing REPLY OK IS ano into the netcat terminal
+```
+**Client output**:
+```
+Action Success: ano
+```
+
+**Netcat output**:
+```
+AUTH j AS l USING k
+BYE FROM l
+```
+
+**Output**:
+
+### Test case 2: Unsuccessful authentication
+**Program startup**:
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567 < TestInputs/auth
+    // Followed by typing REPLY NOK IS ne into the netcat terminal
+```
+
+**Client output**:
+```
+Action Failure: ne
+```
+
+**Netcat output**:
+```
+AUTH j AS l USING k
+BYE FROM l
+```
+
+### Test case 3: Sending a message
+**Program startup**:
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567 < TestInputs/one_message
+    // Followed by typing REPLY OK IS ano into the netcat terminal
+```
+
+**Client output**:
+```
+Action Success: ano
+```
+
+**Netcat output**:
+```
+AUTH j AS l USING k
+MSG FROM l IS ahoj server!
+BYE FROM l
+```
+
+### Test case 4: Joining a channel and then sending a message
+**Program startup**:
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567 < TestInputs/join
+    // Followed by typing REPLY OK IS ano twice into the netcat terminal
+```
+
+**Client output**:
+```
+Action Success: ano
+Action Success: ano
+```
+
+**Netcat output**:
+```
+AUTH a AS c USING b
+JOIN superkanal AS c
+MSG FROM c IS toto je sprava do superkanalu!
+BYE FROM c
+```
+
+### Test case 5: Renaming and then sending a message
+**Program startup**:
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567 < TestInputs/rename
+    // Followed by typing REPLY OK IS ano into the netcat terminal
+```
+
+**Client output**:
+```
+Action Success: ano
+```
+
+**Netcat output**:
+```
+AUTH ahoj AS ahoooj USING ahooj
+MSG FROM nove_meno IS premenovana sprava
+BYE FROM nove_meno
+```
+
+### Test case 6: Sending a message and receiving one from the server
+**Program startup**:
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567
+    // Followed by typing /auth j k l into the client terminal
+    // Followed by typing REPLY OK IS ano and MSG FROM Server IS ahoj klient! into the netcat terminal
+    // Followed by typing ahoj server! and then pressing CTRL + C in the client terminal 
+```
+
+**Client output**:
+```
+Action Success: ano
+Server: ahoj klient!
+```
+
+**Netcat output**:
+```
+AUTH j AS l USING k
+MSG FROM l IS ahoj server!
+BYE FROM l
+```
+
+### Test case 7: Exchanging messages with the server, then switching channel, renaming and exchanging some more
+**Program startup**:
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567
+    // A combination of all previous cases. First authenticate,
+    // then exchange messages with the server, then join, then rename,
+    // then exchange some more messages.
+```
+
+**Client output**:
+```
+Action Success: ano
+Server: ahoj klient!
+Server: ako sa mas?
+Action Success: j
+Server: jupi maj sa!
+```
+
+**Netcat output**:
+```
+AUTH j AS l USING k
+MSG FROM l IS ahoj server!
+MSG FROM l IS vyborne :))
+MSG FROM l IS idem do ineho kanalu
+JOIN kanal AS l
+MSG FROM klient IS uz sa volam klient!
+BYE FROM klient
+```
+
+### Testing invalid cases
+### Test case 1: Invalid user command and trying to send a message without authentication
+**Program startup**: 
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567 < TestInputs/invalid_command_message
+```
+
+**Client output**:
+```
+ERROR: /invalid
+ERROR: spravasprava
+```
+
+**Netcat output**:
+``
+BYE FROM Unknown
+``
+
+**Client exit code**: 0
+
+### Test case 2: Receiving a malformed message from the server
+**Program startup**:
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567 < TestInputs/auth
+    // Followed by typing REPLY OK 1S ano into the netcat terminal
+```
+
+**Client output**:
+```
+ERROR: REPLY OK 1S ano
+```
+
+**Netcat output**:
+```
+AUTH j AS l USING k
+ERR FROM l IS Malformed message received
+```
+
+**Client exit code**: 20 (Malformed message received)
+
+### Test case 3: Receiving a MSG message in auth state
+**Program startup**:
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567 < TestInputs/auth
+    // Followed by typing MSG FROM SERVER IS ok into the netcat terminal
+```
+
+**Client output**:
+```
+ERROR: Invalid message MSG for state AUTH
+```
+
+**Netcat output**:
+```
+AUTH j AS l USING k
+ERR FROM l IS Invalid message type MSG in state AUTH
+```
+
+**Client exit code**: 50 (invalid message)
+
+### Test case 4: Receiving a REPLY message in open state
+**Program startup:**
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567
+    // Followed by typing /join j k l into the netcat terminal
+    // Followed by typing REPLY OK IS ano twice into the netcat terminal
+```
+
+**Client output**:
+```
+Action Success: ano
+ERROR: Invalid message REPLY for state OPEN
+```
+
+**Netcat output**:
+```
+AUTH j AS l USING k
+ERR FROM l IS Invalid message type REPLY in state OPEN
+```
+
+**Client exit code**: 50 (invalid message)
+
+### Test case 5: Timeout when waiting for a reply
+**Program startup**:
+```
+    nc -4 -C -l -v -k 127.0.0.1 4567
+    ./ipk25chat-client -t tcp -s localhost -p 4567 < TestInputs/auth
+```
+
+**Client output**:
+```
+ERROR: Timeout when waiting for reply to authentication
+```
+
+**Client exit code**: 40 (Reply timed out)
+
+**Netcat output**:
+```
+AUTH j AS l USING k
+ERR FROM l IS Timeout when waiting for reply to authentication
+```
+
+### Test case 6: Trying to send too long message
+**Program startup**:
+```
+nc -4 -C -l -v -k 127.0.0.1 4567
+./ipk25chat-client -t tcp -s localhost -p 4567 < TestInputs/too_long_message
+// The too_long_message file is not included because of it's size, however it was generated as the result of the seq -s "" 0 60000 command
+```
+
+**Client output**:
+```
+Action Success: j
+ERROR: Message too long. Truncating to 60000
+```
+
+**Netcat output**:
+```
+AUTH j AS l USING k
+very long message
+BYE FROM l
+```
+**Client exit code**: 0
+
+### UDP testing
+Since this variant is not textual, netcat itself wouldn't suffice. Netcat was still used, however in combination with a script that converted strings to UDP messages.
+todo
 ## Bibliography
 [RFC9293] Eddy, W. *Transmission Control Protocol (TCP)* [online]. August 2022. [cited 2025-04-14]. DOI: 10.17487/RFC9293. Avaliable at: https://datatracker.ietf.org/doc/html/rfc9293#name-introduction<br>
 [Techtarget] Yasar, K. *Transmission Control Protocol (TCP)* [online]. June 2024. [cited 2025-04-14]. Avaliable at: https://www.techtarget.com/searchnetworking/definition/TCP<br>
