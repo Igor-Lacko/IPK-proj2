@@ -64,16 +64,9 @@ public class UDPServerCommunicator : IServerCommunicator
     public event Action<Message> MessageReceived = message => { };
 
     /// <summary>
-    /// The event throuwn when a message confirmation timeouts.
+    /// The event thrown when a message confirmation timeouts.
     /// </summary>
     public event Action ConfirmTimeouted = () => { };
-
-    /// <summary>
-    /// Guards access for checking and removing messages from SentMessageInformation.
-    /// Since if a very small timeoout value and multiple retransmissions
-    /// are used, we could receive CONFIRM messages for the same message in very quick succession.
-    /// </summary>
-    private readonly Lock MessageConfirmLock = new();
 
     /// <summary>
     /// Cancellation token source. Cancels the server communicator at the end of the program.
@@ -129,14 +122,12 @@ public class UDPServerCommunicator : IServerCommunicator
             // Bytes received
             int bytesReceived = 0;
 
-            // Filter out depending on if the socket is connected or not
+            // Depending on if the socket is connected or not
             if(!UdpSocket!.Connected)
             {
                 // Receive the message
-                SocketReceiveFromResult result = await UdpSocket!.ReceiveFromAsync(buffer, new IPEndPoint(IPAddress.Any, 0));
+                SocketReceiveFromResult result = await UdpSocket.ReceiveFromAsync(buffer, new IPEndPoint(IPAddress.Any, 0));
                 bytesReceived = result.ReceivedBytes;
-
-                // Either the opening port or the dynamically allocated server port
                 IPEndPoint remoteEndPoint = (IPEndPoint)result.RemoteEndPoint;
 
                 // Filter out non-server IP addresses at the beginning
@@ -146,11 +137,11 @@ public class UDPServerCommunicator : IServerCommunicator
                 // Update the port if the server switched (on the initial AUTH) and connect to only receive from the server
                 if(remoteEndPoint.Port != Port)
                 {
-                    // Reset port (todo remove)
+                    // Reset port
                     Port = (ushort)remoteEndPoint.Port;
 
-                    // Use connected UDP socket to only receive messages from the server
-                    UdpSocket!.Connect(new IPEndPoint(Host, Port));
+                    // Connected UDP socket to only receive messages from the server
+                    UdpSocket.Connect(new IPEndPoint(Host, Port));
                 }
             }
 
@@ -165,37 +156,24 @@ public class UDPServerCommunicator : IServerCommunicator
     /// <summary>
     /// Handler method for received messages.
     /// Needed here as opposed to TCPServerCommunicator, since the latter just delegates all messages to the client.
-    /// Here we need to handle CONFIRM and PING internally, while checking for already seen message IDs. 
     /// </summary>
     /// <param name="message">The message to handle.</param>
     private async Task HandleReceivedMessage(Message message)
     {
         // No checks needed here
         if(message.Type == MessageType.MALFORMED)
-        {
             MessageReceived.Invoke(message);
-            return;
-        }
 
         // CONFIRM received --> Set the task result for the confirmed message (if it exists)
-        else if(message.Type == MessageType.CONFIRM)
+        else if(message.Type == MessageType.CONFIRM && SentMessageInformation.TryGetValue(message.GetMessageID(), out MessageStateInformation value))
         {
-            lock(MessageConfirmLock)
-            {
-                if(SentMessageInformation.TryGetValue(message.GetMessageID(), out MessageStateInformation value))
-                {
-                    value.OnConfirm.SetResult(true);
-                    if(!value.IsRequest) SentMessageInformation.Remove(message.GetMessageID());
-                }
-            }
+            value.OnConfirm.SetResult(true);
+            if(!value.IsRequest) SentMessageInformation.Remove(message.GetMessageID());
         }
 
         // Check if the ID was seen already, if yes send confirm and return
         else if(SeenMessageIDs.Contains(message.GetMessageID()))
-        {
             await SendConfirm(message.GetMessageID());
-            return;
-        }
 
         // Same for REPLY messages that are replying to a non-request message or a unknown message
         else if(message.Type == MessageType.REPLY)
@@ -207,7 +185,7 @@ public class UDPServerCommunicator : IServerCommunicator
             await SendConfirm(messageID);
 
             // Verify if it's replying to a request
-            if(SentMessageInformation.TryGetValue(refMessageID, out MessageStateInformation value) && value.IsRequest)
+            if(SentMessageInformation.TryGetValue(refMessageID, out MessageStateInformation maybeRequest) && maybeRequest.IsRequest && maybeRequest.MessageConfirmed.IsCompleted)
             {
                 // We shouldn't need a lock here since there can only be one request message at a time
                 SentMessageInformation.Remove(refMessageID);
@@ -221,7 +199,6 @@ public class UDPServerCommunicator : IServerCommunicator
             ushort messageID = message.GetMessageID();
             SeenMessageIDs.Add(messageID);
             await SendConfirm(messageID);
-            return;
         }
 
         // Non PING/CONFIRM message which was also not seen before --> delegate to the client class
@@ -237,30 +214,33 @@ public class UDPServerCommunicator : IServerCommunicator
     /// <summary>
     /// Sends a CONFIRM message to the server.
     /// Kept separate from the SendMessage method, since we don't need to wait for CONFIRM to be, well, confirmed.
+    /// Also the semaphore is not neccessary here, since the risk of spamming the server is not present here (because
+    /// CONFIRM is only sent as a response to the server and it caused issues when sending 
+    /// confirm waited on a semaphore (for example when piping input from a file).
     /// </summary>
     /// <param name="messageID">ID of the message to confirm.</param>
     private async Task SendConfirm(ushort messageID)
     {
-        await SendGuardian.WaitAsync();
-
-        // Send confirm
         if(UdpSocket!.Connected) await UdpSocket.SendAsync(new ConfirmMessage(messageID).AsBytes(messageID));
         else await UdpSocket!.SendToAsync(new ConfirmMessage(messageID).AsBytes(messageID), new IPEndPoint(Host, Port));
-
-        // Release the semaphore
-        SendGuardian.Release();
     }
 
     /// <summary>
     /// Sends a message to the server.
-    /// Needs to be split from the other messages due to the dynamic port switching.
     /// </summary>
     /// <param name="message">Message to send.</param>
-    /// <returns>True if the message was confirmed, false otherwise.</returns>
     public async Task SendMessage(Message message)
     {
-        // Wait for access to sending
-        await SendGuardian.WaitAsync(ServerInputCancellationTokenSource.Token);
+        try
+        {
+            // Until the previous message is not confirmed
+            await SendGuardian.WaitAsync(ServerInputCancellationTokenSource.Token);
+        }
+
+        catch(OperationCanceledException)
+        {
+            return;
+        }
 
         // Current message ID
         ushort messageID = CurrentMessageID++;
@@ -312,7 +292,6 @@ public class UDPServerCommunicator : IServerCommunicator
             ConfirmTimeouted.Invoke();
         }
 
-        // Else release the semaphore
         else SendGuardian.Release();
     }
 }
