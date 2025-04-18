@@ -11,7 +11,7 @@ class AuthMessage:
         split = message.split(" ")
         username = split[1]
         displayName = split[3]
-        secret = split[5]
+        secret = split[5].rstrip("\r\n")
         return AuthMessage(username, displayName, secret)
 
 
@@ -30,7 +30,7 @@ class JoinMessage:
         """JOIN ID AS DNAME"""
         split = message.split(" ")
         channelID = split[1]
-        displayName = split[3]
+        displayName = split[3].rstrip("\r\n")
         return JoinMessage(channelID, displayName)
 
     def PrintMessage(self):
@@ -46,7 +46,7 @@ class MsgMessage:
         """MSG FROM DNAME IS CONTENT"""
         split = message.split(" ")
         displayName = split[2]
-        content = split[4]
+        content = " ".join(split[4:]).rstrip("\r\n")
         return MsgMessage(displayName, content)
 
     def PrintMessage(self):
@@ -63,7 +63,7 @@ class ErrMessage:
         """ERR FROM DNAME IS CONTENT"""
         split = message.split(" ")
         displayName = split[2]
-        content = split[4]
+        content = " ".join(split[4:]).rstrip("\r\n")
         return ErrMessage(displayName, content)
 
     def PrintMessage(self):
@@ -78,7 +78,7 @@ class ByeMessage:
     def Parse(message):
         """BYE FROM DNAME"""
         split = message.split(" ")
-        displayName = split[2]
+        displayName = split[2].rstrip("\r\n")
         return ByeMessage(displayName)
 
     def PrintMessage(self):

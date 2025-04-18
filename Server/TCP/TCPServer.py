@@ -86,21 +86,26 @@ class TCPServer:
         split = message.split(" ")
         match(split[0]):
             case "reply":
-                content = split[1]
+                content = " ".join(split[1:])
                 return f"REPLY OK IS {content}\r\n"
 
+            case "reply!":
+                content = " ".join(split[1:])
+                return f"REPLY NOK IS {content}\r\n"
+
             case "msg":
-                content = split[1]
+                content = " ".join(split[1:])
                 return f"MSG FROM SERVER IS {content}\r\n"
 
             case "bye":
                 return "BYE FROM SERVER\r\n"
 
             case "err":
-                content = split[1]
+                content = " ".join(split[1:])
                 return f"ERR FROM SERVER IS {content}\r\n"
 
             case "malformed":
+                content = " ".join(split[1:])
                 return f"{content}\r\n"
             
             case _:

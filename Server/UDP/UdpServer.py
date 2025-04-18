@@ -39,10 +39,8 @@ class UdpServer:
 
     def Close(self):
         """At the end"""
-        self.InitialSocket.shutdown(socket.SHUT_RDWR)
         self.InitialSocket.close()
         if self.DynamicSocket is not None:
-            self.DynamicSocket.shutdown(socket.SHUT_RDWR)
             self.DynamicSocket.close()
 
     def ClientLoop(self):
@@ -81,7 +79,7 @@ class UdpServer:
     def InputLoop(self):
         """read commands from stdin and send messages to the client"""
         while not self.IsFinished:
-            message = self.ParseMessageFromString(input("Type in a message to send to the client or press enter to exit:\n"))
+            message = self.ParseMessageFromString(input())
             if message is None:
                 self.IsFinished = True
                 self.Close()
@@ -100,18 +98,22 @@ class UdpServer:
         match(split[0]):
             case "reply":
                 self.MessageID += 1
-                content = split[1].encode('ascii')
-                print("returning reply")
+                content = " ".join(split[1:]).encode('ascii')
                 return REPLY.to_bytes(1, 'big') + (self.MessageID - 1).to_bytes(2, 'big') + int(1).to_bytes(1, 'big') + self.ReceivedLastID.to_bytes(2, 'big') + content + b'\x00'
+
+            case "reply!":
+                self.MessageID += 1
+                content = " ".join(split[1:]).encode('ascii')
+                return REPLY.to_bytes(1, 'big') + (self.MessageID - 1).to_bytes(2, 'big') + int(0).to_bytes(1, 'big') + self.ReceivedLastID.to_bytes(2, 'big') + content + b'\x00'
 
             case "msg":
                 self.MessageID += 1
-                content = split[1].encode('ascii')
+                content = " ".join(split[1:]).encode('ascii')
                 return MSG.to_bytes(1, 'big') + (self.MessageID - 1).to_bytes(2, 'big') + b"server" + b'\x00' + content + b'\x00'
 
             case "err":
                 self.MessageID += 1
-                content = split[1].encode('ascii')
+                content = " ".join(split[1:]).encode('ascii')
                 return ERR.to_bytes(1, 'big') + (self.MessageID - 1).to_bytes(2, 'big') + b"server" + b'\x00' + content + b'\x00'
 
             case "bye":
