@@ -179,6 +179,16 @@ public abstract class Client
     protected void OnUserInputReceived(string? input) => UserInputQueue.Enqueue(input);
 
     /// <summary>
+    /// Handler for the ERR message.
+    /// </summary>
+    /// <param name="message">Err message received.</param>
+    protected virtual async Task OnErrMessageReceived(ErrMessage message)
+    {
+        StdoutResultWriter.PrintErrMessage(message);
+        await ErrorExit(false, null, ExitCodes.ERR_RECEIVED);
+    }
+
+    /// <summary>
     /// Called to check if a message from the server is terminating the connection.
     /// </summary>
     /// <param name="message">Message received.</param>
@@ -197,8 +207,7 @@ public abstract class Client
         {
             // Print the message and go to END
             case MessageType.ERR:
-                StdoutResultWriter.PrintErrMessage((ErrMessage)message);
-                await ErrorExit(false, null, ExitCodes.ERR_RECEIVED);
+                await OnErrMessageReceived((ErrMessage)message);
                 return true;
 
             // Go to END

@@ -159,7 +159,18 @@ public class UDPServerCommunicator : IServerCommunicator
             else bytesReceived = await UdpSocket.ReceiveAsync(buffer);
 
             // Parse the message and handle it
-            await HandleReceivedMessage(Message.Parse(buffer, bytesReceived));
+            Message message = Message.Parse(buffer, bytesReceived);
+
+            // Either wait for retransmissions, or handle normally
+            if(message.Type == MessageType.BYE || message.Type == MessageType.ERR)
+            {
+                await SendConfirm(message.GetMessageID());
+                await WaitForRetransmissions(message);
+                return;
+            }
+
+            // Handle normally
+            else await HandleReceivedMessage(message);
         }
     });
 
@@ -232,6 +243,8 @@ public class UDPServerCommunicator : IServerCommunicator
             SeenMessageIDs.Add(messageID);
             await SendConfirm(messageID);
         }
+
+        // If it's a BYE/ERR message, we need to wait for possible retransmissions
 
         // Non PING/CONFIRM message which was also not seen before --> delegate to the client class
         else
@@ -325,5 +338,88 @@ public class UDPServerCommunicator : IServerCommunicator
         }
 
         else SendGuardian.Release();
+    }
+
+    /// <summary>
+    /// Waits for the potential retransmission/s of a message.
+    /// </summary>
+    /// <param name="message">Message to wait for. All other messages are dropped.</param>
+    private async Task WaitForRetransmissions(Message message)
+    {
+        // Print the local error
+        if(message.Type == MessageType.ERR)
+            StdoutResultWriter.PrintErrMessage((ErrMessage)message);
+
+        // Wait for possible retransmissions
+        while(true)
+        {
+            // To cancel after the timeout
+            CancellationTokenSource onTimeout = new();
+
+            // Tasks for delay and retransmit
+            Task timeoutTask = Task.Delay(Timeout);
+            Task retransmitTask = ReceivePossibleRetransmissions(message, onTimeout.Token);
+
+            // Either the retransmit comes or on timeout return
+            Task completedTask = await Task.WhenAny(timeoutTask, retransmitTask);
+
+            // We can return
+            if(completedTask == timeoutTask)
+            {
+                onTimeout.Cancel();
+                MessageReceived.Invoke(message);
+                return;
+            }
+
+            // Send confirm and continue
+            else await SendConfirm(message.GetMessageID());
+        }
+    }
+
+    /// <summary>
+    /// Receives possible retransmissions after receiving a BYE/ERR message.
+    /// </summary>
+    /// <param name="original">Original message to compare to. All others are dropped.</param>
+    /// <param name="token">Cancellation token which is cancelled after a timeout (no retransmissions received).</param>
+    private async Task ReceivePossibleRetransmissions(Message original, CancellationToken token)
+    {
+        while(true)
+        {
+            try
+            {
+                byte[] buffer = new byte[1500];
+                int bytesReceived = await UdpSocket.ReceiveAsync(buffer, token);
+                Message message = Message.Parse(buffer, bytesReceived);
+
+                // Compare the messages
+                if(original.Type == MessageType.BYE && message.Type == MessageType.BYE)
+                {
+                    if(((ByeMessage)original).DisplayName == ((ByeMessage)message).DisplayName &&
+                    ((ByeMessage)original).GetMessageID() == ((ByeMessage)message).GetMessageID())
+                        return;
+
+                    else continue;
+                }
+
+                else if(original.Type == MessageType.ERR && message.Type == MessageType.ERR)
+                {
+                    if(((ErrMessage)original).DisplayName == ((ErrMessage)message).DisplayName &&
+                    ((ErrMessage)original).MessageContent == ((ErrMessage)message).MessageContent &&
+                    ((ErrMessage)original).GetMessageID() == ((ErrMessage)message).GetMessageID())
+                        return;
+
+                    else continue;
+                }
+
+                // No comparision to make
+                else continue;
+            }
+
+            // Timeout
+            catch(OperationCanceledException)
+            {
+                return;
+            }
+        }
     }
 }

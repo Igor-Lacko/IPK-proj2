@@ -21,7 +21,7 @@ public class ByeMessage(string displayName, ushort messageID = 0) : Message(Mess
     /// <summary>
     /// Display name of the user.
     /// </summary>
-    private readonly string DisplayName = displayName;
+    public readonly string DisplayName = displayName;
 
     /// <summary>
     /// ID of the message.

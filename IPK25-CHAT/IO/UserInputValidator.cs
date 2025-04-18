@@ -39,20 +39,13 @@ public class UserInputValidator
                 return command;
 
             // Print a error message to the user
-            StdoutResultWriter.InternalClientError(input);
+            StdoutResultWriter.InternalClientError($"Invalid command {command!.Type} for state {ClientState}");
         }
 
         // Try to look for an invalid command
         else if(input.StartsWith('/'))
         {
-            StdoutResultWriter.InternalClientError(input);
-            return null;
-        }
-
-        // Consider the input as a message
-        if(Config.DisplayName == null)
-        {
-            StdoutResultWriter.InternalClientError(input);
+            StdoutResultWriter.InternalClientError($"Invalid command {input}");
             return null;
         }
 
@@ -67,7 +60,7 @@ public class UserInputValidator
         MsgMessage msg = new(Config.DisplayName, input);
         if(!msg.IsValid(ClientState))
         {
-            StdoutResultWriter.InternalClientError(input);
+            StdoutResultWriter.InternalClientError($"Can't send messages in state {ClientState}");
             return null;
         }
 
