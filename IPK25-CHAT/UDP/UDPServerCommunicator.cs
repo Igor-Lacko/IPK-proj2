@@ -124,7 +124,7 @@ public class UDPServerCommunicator : IServerCommunicator
             int bytesReceived = 0;
 
             // Depending on if the socket is connected or not
-            if(!UdpSocket!.Connected)
+            if(!UdpSocket.Connected)
             {
                 // Receive the message
                 SocketReceiveFromResult result = await UdpSocket.ReceiveFromAsync(buffer, new IPEndPoint(IPAddress.Any, 0));
@@ -170,15 +170,29 @@ public class UDPServerCommunicator : IServerCommunicator
     /// <param name="message">The message to handle.</param>
     private async Task HandleReceivedMessage(Message message)
     {
-        // No checks needed here
+        // Check if we got an ID, if yes send a confirm if not just pass the malformed message to the client
         if(message.Type == MessageType.MALFORMED)
+        {
+            MalformedMessage malformed = (MalformedMessage)message;
+            if(malformed.MessageID != null) await SendConfirm((ushort)malformed.MessageID!);
             MessageReceived.Invoke(message);
+        }
 
         // CONFIRM received --> Set the task result for the confirmed message (if it exists)
-        else if(message.Type == MessageType.CONFIRM && SentMessageInformation.TryGetValue(message.GetMessageID(), out MessageStateInformation value))
+        else if(message.Type == MessageType.CONFIRM)
         {
-            value.OnConfirm.SetResult(true);
-            if(!value.IsRequest) SentMessageInformation.Remove(message.GetMessageID());
+            if(SentMessageInformation.TryGetValue(message.GetMessageID(), out MessageStateInformation value))
+            {
+                value.OnConfirm.SetResult(true);
+                if(!value.IsRequest) SentMessageInformation.Remove(message.GetMessageID());
+            }
+
+            // Treat as malformed
+            else
+            {
+                MalformedMessage malformed = new(null);
+                MessageReceived.Invoke(malformed);
+            }
         }
 
         // Check if the ID was seen already, if yes send confirm and return
@@ -200,6 +214,14 @@ public class UDPServerCommunicator : IServerCommunicator
                 // We shouldn't need a lock here since there can only be one request message at a time
                 SentMessageInformation.Remove(refMessageID);
                 MessageReceived.Invoke(message);
+            }
+
+            // Treat as malformed message, and send a confirm since replies have valid ID's
+            else
+            {
+                await SendConfirm(messageID);
+                MalformedMessage malformed = new(null);
+                MessageReceived.Invoke(malformed);
             }
         }
 

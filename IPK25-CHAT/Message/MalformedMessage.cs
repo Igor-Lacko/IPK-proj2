@@ -7,14 +7,12 @@ using IPK_25_CHAT.Enum;
 /// <summary>
 /// Class for a malformed message.
 /// </summary>
-/// <param name="messageContent">Content of the message.</param>
-public class MalformedMessage(string? messageContent) : Message(MessageType.MALFORMED)
+public class MalformedMessage(ushort? messageId) : Message(MessageType.MALFORMED)
 {
     /// <summary>
-    /// Message content.
-    /// TODO: Byte version maybe?
+    /// Message ID. May or may not have one (has one if bytes received >= 3).
     /// </summary>
-    public readonly string? MessageContent = messageContent;
+    public ushort? MessageID = messageId;
 
     /// <summary>
     /// Checks if the message is valid in the current client state.
@@ -34,8 +32,8 @@ public class MalformedMessage(string? messageContent) : Message(MessageType.MALF
     }
 
     /// <summary>
-    /// Throws an exception, since malformed messages do not have message IDs.
+    /// Throws an exception, since we need to access the ID from the public attribute (it is nullable as opposed to other messages).
     /// </summary>
     /// <throws exception cref="ArgumentException">Always thrown.</exception>
-    public override ushort GetMessageID() => throw new ArgumentException("Malformed messages do not have message IDs.");
+    public override ushort GetMessageID() => throw new ArgumentException("Acess message id through the public attribute for malformed messages!");
 }

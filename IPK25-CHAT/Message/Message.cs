@@ -2,6 +2,7 @@
 
 namespace IPK_25_CHAT.Message;
 
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using IPK_25_CHAT.Enum;
@@ -34,7 +35,7 @@ public abstract class Message(MessageType type) : IReadable
     {
         // Mandatory null check
         if(message == null)
-            return new MalformedMessage(message);
+            return new MalformedMessage(null);
 
         // All matches
         Match byeMatch = Regex.Match(message, ByeMessage.Format);
@@ -64,7 +65,7 @@ public abstract class Message(MessageType type) : IReadable
         }
 
         // No match found
-        return new MalformedMessage(message);
+        return new MalformedMessage(null);
     }
 
     /// <summary>
@@ -116,11 +117,25 @@ public abstract class Message(MessageType type) : IReadable
 
             // No match for message type
             default:
-                return new MalformedMessage(null);
+                // Try to pick up the message ID
+                if(bytesReceived >= 3)
+                {
+                    ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(message, 1));
+                    return new MalformedMessage(messageID);
+                }
+
+                else return new MalformedMessage(null);
         }
 
         // Matched message type but failed to parse
-        return new MalformedMessage(null);
+        // Again, try to pick up the message ID
+        if(bytesReceived >= 3)
+        {
+            ushort messageID = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(message, 1));
+            return new MalformedMessage(messageID);
+        }
+
+        else return new MalformedMessage(null);
     }
 
     /// <summary>
