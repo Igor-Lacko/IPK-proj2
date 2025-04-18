@@ -47,16 +47,6 @@ public class UDPClient : Client
         ((UDPServerCommunicator)ServerCommunicator).ConfirmTimeouted += OnMessageTimeout;
     }
 
-    protected override async Task OnEofReceived()
-    {
-        if(ClientState != State.START) await base.OnEofReceived();
-        else
-        {
-            GracefulTermination();
-            Environment.Exit((int)ExitCodes.SUCCESS);
-        }
-    }
-
     /// <summary>
     /// Method to be called when a message times out.
     /// </summary>

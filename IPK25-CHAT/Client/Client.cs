@@ -85,7 +85,7 @@ public abstract class Client
     /// Called when the end of file (EOF) is received, (well actually dequeued).
     /// Also called on CTRL + C (when null is dequeued).
     /// </summary>
-    protected virtual async Task OnEofReceived()
+    private async Task OnEofReceived()
     {
         if (ClientState != State.END)
             await ServerCommunicator.SendMessage(new ByeMessage(Config.DisplayName!));
