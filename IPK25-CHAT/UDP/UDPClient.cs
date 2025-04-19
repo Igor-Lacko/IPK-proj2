@@ -43,6 +43,9 @@ public class UDPClient : Client
         Timeout = timeout;
         ServerCommunicator = CreateServerCommunicator();
 
+        // Max message content size --> 1500 - (TYPE(1) + ID(2) + DNAME(20) + 1 + 1) = 1475 (I hope this is correct)
+        InputValidator.MaxMessageLength = 1475;
+
         // Subscribe to events
         ServerCommunicator.MessageReceived += ServerInputQueue.Enqueue;
         ((UDPServerCommunicator)ServerCommunicator).ConfirmTimeouted += OnMessageTimeout;

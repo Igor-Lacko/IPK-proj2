@@ -600,7 +600,7 @@ public abstract class Client
     ///     - Exit with the given code.
     /// </summary>
     /// <param name="sendErrorMessage">Whether to send an ERR message to the server.</param>
-    /// <param name="errorMessage">Error mesxsage.</param>
+    /// <param name="errorMessage">Error messsage.</param>
     /// <param name="exitCode">Exit code.</param>
     protected async Task ErrorExit(bool sendErrorMessage, string? errorMessage, ExitCodes exitCode)
     {

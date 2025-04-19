@@ -40,6 +40,11 @@ public class UDPServerCommunicator : IServerCommunicator
     private readonly List<ushort> SeenMessageIDs = [];
 
     /// <summary>
+    /// List of already confirmed message IDs.
+    /// </summary>
+    private readonly List<ushort> ConfirmedMessageIDs = [];
+
+    /// <summary>
     /// Dictionary mapping sent message ID's to their current states.
     /// </summary>
     private readonly Dictionary<ushort, MessageStateInformation> SentMessageInformation = [];
@@ -195,10 +200,15 @@ public class UDPServerCommunicator : IServerCommunicator
             if(SentMessageInformation.TryGetValue(message.GetMessageID(), out MessageStateInformation value))
             {
                 value.OnConfirm.SetResult(true);
+                ConfirmedMessageIDs.Add(message.GetMessageID());
                 if(!value.IsRequest) SentMessageInformation.Remove(message.GetMessageID());
             }
 
-            // Treat as malformed
+            // Check if it's a duplicate CONFIRM, if yes ignore it
+            else if(ConfirmedMessageIDs.Contains(message.GetMessageID()))
+                return;
+
+            // Invalid ID, treat as malformed
             else
             {
                 MalformedMessage malformed = new(null);

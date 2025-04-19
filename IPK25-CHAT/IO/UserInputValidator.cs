@@ -25,6 +25,11 @@ public class UserInputValidator
     public UserSessionConfiguration Config { get; set; } = new();
 
     /// <summary>
+    /// The maximum length of a message. Default is 60000 (changed later in the UDP variant).
+    /// </summary>
+    public int MaxMessageLength = 60000;
+
+    /// <summary>
     /// Validates the current user input and returns it as a IReadable object.
     /// </summary>
     /// <param name="input">Given user input.</param>
@@ -50,10 +55,10 @@ public class UserInputValidator
         }
 
         // Truncate the input if it is too long
-        if(input.Length > 60000)
+        if(input.Length > MaxMessageLength)
         {
-            StdoutResultWriter.InternalClientError($"Message too long. Truncating to 60000");
-            input = input[..60000];
+            StdoutResultWriter.InternalClientError($"Message too long. Truncating to {MaxMessageLength}");
+            input = input[..MaxMessageLength];
         }
 
         // Check if the message is valid
