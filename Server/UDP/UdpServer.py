@@ -3,7 +3,9 @@
 
 import threading
 import socket
+from time import sleep
 from Message import *
+from sys import argv
 
 CONFIRM = 0
 REPLY = 1
@@ -15,10 +17,22 @@ ERR = 254
 BYE = 255
 
 MAX_MTU = 1500
+DELAY = 0
+DUPLICATE_ERR_BYE_DELAY = 0
+
+for index, arg in enumerate(argv):
+    if arg == "-delay":
+        DELAY = int(argv[index + 1])
+
+    elif arg == "-errbye-delay":
+        DUPLICATE_ERR_BYE_DELAY = int(argv[index + 1])
+
+
 
 class UdpServer:
-    def __init__(self, port = 4567):
+    def __init__(self, delay, duplicateErrByeDelay, port = 4567):
         self.Port = port
+        self.Delay = delay
         self.MessageID = 0
         self.ReceivedLastID : int = None
         self.InitialSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -26,6 +40,9 @@ class UdpServer:
         self.DynamicSocket = None
         self.ClientAddress = None
         self.IsFinished = False
+        self.LastSentMessage = None
+        self.DuplicateErrByeDelay = duplicateErrByeDelay
+        self.ConfirmNext = True
 
     def Start(self):
         """Starts the server"""
@@ -58,7 +75,9 @@ class UdpServer:
                 (message := self.GetIncomingMessage(data)).PrintMessage()
                 if not isinstance(message, ConfirmMessage):
                     self.ReceivedLastID = message.MessageID
-                    self.SendConfirm(message.MessageID)
+                    sleep(self.Delay / 1000)
+                    if self.ConfirmNext:
+                        self.SendConfirm(message.MessageID)
                     # allocate a new socket
                     self.DynamicSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     self.DynamicSocket.bind(("localhost", 0)) # any port
@@ -74,23 +93,34 @@ class UdpServer:
                 (message := self.GetIncomingMessage(data)).PrintMessage()
                 if not isinstance(message, ConfirmMessage):
                     self.ReceivedLastID = message.MessageID
-                    self.SendConfirm(message.MessageID)
+                    sleep(self.Delay / 1000)
+                    if self.ConfirmNext:
+                        self.SendConfirm(message.MessageID)
 
     def InputLoop(self):
         """read commands from stdin and send messages to the client"""
         while not self.IsFinished:
-            message = self.ParseMessageFromString(input())
+            message = self.ParseMessageFromString(userInput := input())
             if message is None:
                 self.IsFinished = True
                 self.Close()
                 break
 
+            elif message == "ignore":
+                continue
+
             # send from either socket
             if self.DynamicSocket is None and self.ClientAddress is not None: # probably won't ever happen
                 self.InitialSocket.sendto(message, self.ClientAddress)
+                self.LastSentMessage = message
 
             else:
                 self.DynamicSocket.sendto(message, self.ClientAddress)
+                # err/bye retransmission
+                if (userInput.startswith("err") or userInput.startswith("bye")):
+                    sleep(self.DuplicateErrByeDelay / 1000)
+                    self.DynamicSocket.sendto(message, self.ClientAddress)
+                self.LastSentMessage = message
 
     def ParseMessageFromString(self, message : str):
         """Returns a message based on a simplified pattern (first word)"""
@@ -123,10 +153,17 @@ class UdpServer:
             case "ping":
                 self.MessageID += 1
                 return PING.to_bytes(1, 'big') + (self.MessageID - 1).to_bytes(2, 'big')
-            
+
             case "malformed":
                 return message.encode('ascii')
-            
+
+            case "duplicate":
+                return self.LastSentMessage
+
+            case "nonconfirmnext":
+                self.ConfirmNext = False
+                return "ignore"
+
             case _:
                 return None
 
@@ -151,6 +188,7 @@ class UdpServer:
             return ByeMessage.Parse(message)
 
     def SendConfirm(self, messageID : int):
+        print("Sending confirm")
         if self.DynamicSocket is None:
             self.InitialSocket.sendto(CONFIRM.to_bytes(1, 'big') + messageID.to_bytes(2, 'big'), self.ClientAddress)
 
@@ -158,7 +196,7 @@ class UdpServer:
             self.DynamicSocket.sendto(CONFIRM.to_bytes(1, 'big') + messageID.to_bytes(2, 'big'), self.ClientAddress)
 
 def main():
-    server = UdpServer()
+    server = UdpServer(DELAY, DUPLICATE_ERR_BYE_DELAY)
     server.Start()
 
 if __name__ == "__main__":

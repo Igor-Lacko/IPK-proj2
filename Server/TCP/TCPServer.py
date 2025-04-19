@@ -97,6 +97,22 @@ class TCPServer:
                 content = " ".join(split[1:])
                 return f"MSG FROM SERVER IS {content}\r\n"
 
+            case "msgstart":
+                content = " ".join(split[1:])
+                return f"MSG FROM SERVER IS {content}"
+
+            case "msgpart":
+                content = " " + " ".join(split[1:])
+                return f"{content}"
+
+            case "msgend":
+                content = " " + " ".join(split[1:])
+                return f"{content}\r\n"
+
+            case "msgmultiple":
+                contents = "".join([f"MSG FROM SERVER IS {word}\r\n" for word in split[1:]])
+                return contents
+
             case "bye":
                 return "BYE FROM SERVER\r\n"
 
