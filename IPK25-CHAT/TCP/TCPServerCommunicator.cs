@@ -1,23 +1,22 @@
-/* Class for communication with the server via TCP. Uses a NetworkStream object. */
-
 namespace IPK_25_CHAT.TCP;
 
-using IPK_25_CHAT.IO;
 using IPK_25_CHAT.Message;
+using IPK_25_CHAT.IO;
 using IPK_25_CHAT.Interface;
+using IPK_25_CHAT.Enum;
+
 using System.Net;
 using System.Net.Sockets;
-using IPK_25_CHAT.Enum;
 
 /// <summary>
 /// Class for communication with the server via TCP.
 /// Uses a network stream and text based messages.
 /// </summary>
 /// <remarks>
-/// Constructor for TCPServerCommunicator.
+/// The usage of NetworkStream/StreamReader/StreamWriter was inspired by
+/// <a href="https://moodle.vut.cz/pluginfile.php/1081875/mod_folder/content/0/IPK2024-25L-04-PROGRAMOVANI.pdf">the 4th IPK lecture</a>
+/// (i hope this link works).
 /// </remarks>
-/// <param name="host">IP address of the host.</param>
-/// <param name="port">The host port to be connected to.</param>
 public class TCPServerCommunicator : IServerCommunicator
 {
     /// <summary>
@@ -162,11 +161,19 @@ public class TCPServerCommunicator : IServerCommunicator
     /// </summary>
     public void Close()
     {
-        ServerInputCancellationTokenSource.Cancel();
-        TCPReader.Close();
-        TCPWriter.Close();
-        TCPStream.Close();
-        TCPSocket.Shutdown(SocketShutdown.Both);
-        TCPSocket.Close();
+        try
+        {
+            ServerInputCancellationTokenSource.Cancel();
+            TCPReader.Close();
+            TCPWriter.Close();
+            TCPStream.Close();
+            TCPSocket.Shutdown(SocketShutdown.Both);
+            TCPSocket.Close();
+        }
+
+        catch
+        {
+            return;
+        }
     }
 }

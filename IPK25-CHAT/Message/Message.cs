@@ -1,12 +1,11 @@
-/* Contains the base class for a message */
-
 namespace IPK_25_CHAT.Message;
+
+using IPK_25_CHAT.Interface;
+using IPK_25_CHAT.Enum;
 
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
-using IPK_25_CHAT.Enum;
-using IPK_25_CHAT.Interface;
 
 /// <summary>
 /// Base class for a message.
@@ -27,10 +26,10 @@ public abstract class Message(MessageType type) : IReadable
     public abstract bool IsValid(State clientState);
 
     /// <summary>
-    /// Parses the message string into a message object.
+    /// Parses a string into a message object.
     /// </summary>
-    /// <param name="message">Message string.</param>
-    /// <returns>True if parsed successfully, else it returns False.</returns>
+    /// <param name="message">String containing one message (or malformed)</param>
+    /// <returns>The parsed message (MalformedMessage if unsuccessful)</returns>
     public static Message Parse(string? message)
     {
         // Mandatory null check
@@ -69,11 +68,11 @@ public abstract class Message(MessageType type) : IReadable
     }
 
     /// <summary>
-    /// Parses the message byte array into a message object.
+    /// Parses a byte array into a message object.
     /// </summary>
     /// <param name="message">Byte array representing the message. Is UDP only.</param>
     /// <param name="bytesReceived">Number of bytes received.</param>
-    /// <returns>True if parsed successfully, else it returns false.</returns>
+    /// <returns>The parsed message object (or a MalformedMessage if not successful)</returns>
     public static Message Parse(byte[] message, int bytesReceived)
     {
         // From the message type
@@ -223,7 +222,6 @@ public abstract class Message(MessageType type) : IReadable
 
     /// <summary>
     /// Parses the message content parameter from a byte array.
-    /// Does not need to return the index after the message content since it's always at the tail of the message.
     /// </summary>
     /// <param name="message">The byte array where to search for the message content.</param>
     /// <param name="startIndex">Start of the array section to look for the message content.</param>

@@ -1,9 +1,7 @@
-/* Class containing a queue of inputs (messages, commands) */
-
 namespace IPK_25_CHAT.IO;
 
 /// <summary>
-/// Provides a interface for interacting with a queue of inputs.
+/// Provides a interface for interacting with a queue of inputs (messages/commands).
 /// </summary>
 public class InputQueue<T>
 {
@@ -30,7 +28,7 @@ public class InputQueue<T>
     /// <summary>
     /// Wrapper on dequeueing input.
     /// </summary>
-    /// <returns>input from the queue.</returns>
+    /// <returns>Input from the queue.</returns>
     public async Task<T> Dequeue(CancellationToken token)
     {
         try

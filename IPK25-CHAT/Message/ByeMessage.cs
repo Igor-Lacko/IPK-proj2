@@ -1,16 +1,15 @@
-/* Contains the BYE message. */
-
 namespace IPK_25_CHAT.Message;
+
+using IPK_25_CHAT.Enum;
 
 using System.Net;
 using System.Text;
-using IPK_25_CHAT.Enum;
 
 /// <summary>
 /// Class representing the BYE message.
 /// </summary>
 /// <param name="displayName">Display name of the user as a string.</param>
-/// <param name="messageID">ID of the message as a ushort. Unused in the TCP variant, hece the default value.</param>
+/// <param name="messageID">ID of the message as a ushort. Unused in the TCP variant, hence the default value.</param>
 public class ByeMessage(string displayName, ushort messageID = 0) : Message(MessageType.BYE)
 {
     /// <summary>
@@ -32,7 +31,7 @@ public class ByeMessage(string displayName, ushort messageID = 0) : Message(Mess
     /// Checks if the message is valid in the current client state.
     /// </summary>
     /// <param name="clientState">Current state of the client.</param>
-    /// <returns>True if the message is valid, else false.</returns>
+    /// <returns>Always true. The server can send a BYE whenever.</returns>
     public override bool IsValid(State clientState) => true;
 
     /// <summary>
@@ -60,6 +59,7 @@ public class ByeMessage(string displayName, ushort messageID = 0) : Message(Mess
     /// <param name="response">Byte array containing the message.</param>
     /// <param name="bytesReceived">Number of bytes received.</param>
     /// <param name="message">Parsed message if successful, else null.</param>
+    /// <returns>True if the message was parsed successfully, else false.</returns>
     public static bool TryParse(byte[] response, int bytesReceived, out ByeMessage? message)
     {
         // At least |0xFF|MessageID|MessageID|DisplayName|0|
@@ -94,7 +94,7 @@ public class ByeMessage(string displayName, ushort messageID = 0) : Message(Mess
     public override string ToString() => $"BYE FROM {DisplayName}\r\n";
 
     /// <summary>
-    /// Returns the message id. Needed for compatibility with the Message class.
+    /// Returns the message id.
     /// </summary>
     /// <returns>Message ID.</returns>
     public override ushort GetMessageID() => MessageID;

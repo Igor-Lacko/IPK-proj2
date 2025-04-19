@@ -1,5 +1,3 @@
-/* Contains an enumeration of client states. */
-
 namespace IPK_25_CHAT.Enum;
 
 /// <summary>

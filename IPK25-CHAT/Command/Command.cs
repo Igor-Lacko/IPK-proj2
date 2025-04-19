@@ -1,9 +1,8 @@
-/* Contains the base class for a client command */
-
 namespace IPK_25_CHAT.Command;
 
 using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Enum;
+
 using System.Text.RegularExpressions;
 
 /// <summary>
@@ -42,15 +41,15 @@ public abstract class Command(CommandType type) : IReadable
 
         // Try to match the individual commands
 
-        // /rename { DisplayName }
+        // /auth { Username } { Secret } { DisplayName }
         if (Regex.IsMatch(command, AuthCommand.Format))
         {
-            // /auth { Username } { Secret } { DisplayName }
             string[] auth_split = Regex.Split(command, @"\s+");
             result = new AuthCommand(auth_split[1], auth_split[2], auth_split[3]);
             return true;
         }
 
+        // /rename { DisplayName }
         else if (Regex.IsMatch(command, RenameCommand.Format))
         {
             string[] rename_split = Regex.Split(command, @"\s+");

@@ -1,14 +1,13 @@
-/* Contains a class which implements the UDP version of a IPK25CHAT client */
-
 namespace IPK_25_CHAT.UDP;
 
 using IPK_25_CHAT.Client;
+using IPK_25_CHAT.IO;
+using IPK_25_CHAT.Message;
 using IPK_25_CHAT.Command;
 using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Enum;
+
 using System.Net;
-using IPK_25_CHAT.IO;
-using IPK_25_CHAT.Message;
 
 /// <summary>
 /// Class representing a UDP client.
@@ -69,7 +68,7 @@ public class UDPClient : Client
     /// <summary>
     /// Override of OnErrReceived. Doesn't print out the message, done by the communicator already.
     /// </summary>
-    /// <param name="message">The err message. Ignored.</param>
+    /// <param name="message">The err message (for compatibility with the base class). Ignored.</param>
     protected override async Task OnErrMessageReceived(ErrMessage message)
     {
         await ErrorExit(false, null, ExitCodes.ERR_RECEIVED);

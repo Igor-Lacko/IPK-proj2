@@ -1,5 +1,3 @@
-/* Contains an enumeration of command/message parameters (as regular expressions) */
-
 namespace IPK_25_CHAT.Enum;
 
 /// <summary>

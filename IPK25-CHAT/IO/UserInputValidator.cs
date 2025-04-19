@@ -1,12 +1,10 @@
-/* Class that validates user input for the client, also checks for validity via states */
-
 namespace IPK_25_CHAT.IO;
 
 using IPK_25_CHAT.Client;
-using IPK_25_CHAT.Interface;
-using IPK_25_CHAT.Enum;
 using IPK_25_CHAT.Message;
 using IPK_25_CHAT.Command;
+using IPK_25_CHAT.Interface;
+using IPK_25_CHAT.Enum;
 
 /// <summary>
 /// Validates the current user input for the client. Keeps track of it's state via events.

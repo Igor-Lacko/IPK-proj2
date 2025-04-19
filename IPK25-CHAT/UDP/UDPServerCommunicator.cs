@@ -1,13 +1,12 @@
-/* Contains a class for UDP communication with the server */
-
 namespace IPK_25_CHAT.UDP;
 
 using IPK_25_CHAT.Message;
+using IPK_25_CHAT.IO;
 using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Enum;
+
 using System.Net;
 using System.Net.Sockets;
-using IPK_25_CHAT.IO;
 
 /// <summary>
 /// Class for UDP communication with the server.
@@ -19,7 +18,7 @@ public class UDPServerCommunicator : IServerCommunicator
     /// </summary>
     private readonly IPAddress Host;
 
-    /// <summary>0
+    /// <summary>
     /// The current port number.
     /// </summary>
     private ushort Port;
@@ -38,11 +37,6 @@ public class UDPServerCommunicator : IServerCommunicator
     /// List of already seen message IDs.
     /// </summary>
     private readonly List<ushort> SeenMessageIDs = [];
-
-    /// <summary>
-    /// List of already confirmed message IDs.
-    /// </summary>
-    private readonly List<ushort> ConfirmedMessageIDs = [];
 
     /// <summary>
     /// Dictionary mapping sent message ID's to their current states.
@@ -197,15 +191,12 @@ public class UDPServerCommunicator : IServerCommunicator
         // CONFIRM received --> Set the task result for the confirmed message (if it exists)
         else if(message.Type == MessageType.CONFIRM)
         {
-            if(SentMessageInformation.TryGetValue(message.GetMessageID(), out MessageStateInformation value))
-            {
+            // Not yet received confirm, mark the message as confirmed
+            if(SentMessageInformation.TryGetValue(message.GetMessageID(), out MessageStateInformation value) && !value.MessageConfirmed.IsCompleted)
                 value.OnConfirm.SetResult(true);
-                ConfirmedMessageIDs.Add(message.GetMessageID());
-                if(!value.IsRequest) SentMessageInformation.Remove(message.GetMessageID());
-            }
 
-            // Check if it's a duplicate CONFIRM, if yes ignore it
-            else if(ConfirmedMessageIDs.Contains(message.GetMessageID()))
+            // Duplicate confirm, ignore
+            else if(value.MessageConfirmed.IsCompleted)
                 return;
 
             // Invalid ID, treat as malformed
@@ -230,9 +221,8 @@ public class UDPServerCommunicator : IServerCommunicator
             await SendConfirm(messageID);
 
             // Verify if it's replying to a request
-            if(SentMessageInformation.TryGetValue(refMessageID, out MessageStateInformation maybeRequest) && maybeRequest.IsRequest && maybeRequest.MessageConfirmed.IsCompleted)
+            if(SentMessageInformation.TryGetValue(refMessageID, out MessageStateInformation maybeRequest) && maybeRequest.IsRequest && maybeRequest.MessageConfirmed.IsCompleted && !maybeRequest.ReplyReceived)
             {
-                // We shouldn't need a lock here since there can only be one request message at a time
                 SentMessageInformation.Remove(refMessageID);
                 MessageReceived.Invoke(message);
             }

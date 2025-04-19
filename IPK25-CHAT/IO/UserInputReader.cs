@@ -1,5 +1,3 @@
-/* Contains the implementation of InputReader class, which asynchronously awaits input from either the user or the server. */
-
 namespace IPK_25_CHAT.IO;
 
 /// <summary>
@@ -10,7 +8,7 @@ public class UserInputReader()
     /// <summary>
     /// Cancellation token source. Cancels the user input reader at the end of the program.
     /// </summary>
-    private readonly CancellationTokenSource UserInputCancellationToken = new();
+    private readonly CancellationTokenSource UserInputCancellationTokenSource = new();
 
     /// <summary>
     /// Raised on receiving user input.
@@ -25,14 +23,14 @@ public class UserInputReader()
     /// <summary>
     /// Closes the input reader.
     /// </summary>
-    public void Close() => UserInputCancellationToken.Cancel();
+    public void Close() => UserInputCancellationTokenSource.Cancel();
 
     /// <summary>
     /// "Main" method of the input reader. Is run until the Close() method is called (by the client).
     /// </summary>
     public void Run() => Task.Run(() =>
     {
-        while (!UserInputCancellationToken.Token.IsCancellationRequested)
+        while (!UserInputCancellationTokenSource.Token.IsCancellationRequested)
         {
             // Parsing is done separately
             string? input = Console.ReadLine();

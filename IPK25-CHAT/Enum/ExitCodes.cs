@@ -1,5 +1,3 @@
-/* Contains the enumeration of client exit codes. */
-
 namespace IPK_25_CHAT.Enum;
 
 /// <summary>

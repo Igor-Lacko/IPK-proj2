@@ -1,13 +1,8 @@
-/* Contains the enumeration of command types*/
-
 namespace IPK_25_CHAT.Enum;
 
 /// <summary>
 /// Enumeration of command types.
 /// </summary>
-/// <remarks>
-/// Maybe i should add more later?
-/// </remarks>
 public enum CommandType
 {
     /// <summary>

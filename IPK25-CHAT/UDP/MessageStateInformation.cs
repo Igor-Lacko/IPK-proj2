@@ -1,5 +1,3 @@
-/* Class that contains the current state of a UDP message */
-
 namespace IPK_25_CHAT.UDP;
 
 /// <summary>
@@ -20,6 +18,11 @@ public struct MessageStateInformation(ushort messageId, TaskCompletionSource<boo
     /// confirmation before sending another, but this approach seems safer)
     /// </summary>
     public bool IsRequest = isRequest;
+
+    /// <summary>
+    /// If the message is a request, this is set to true upon receiving a reply.
+    /// </summary>
+    public bool ReplyReceived = false;
 
     /// <summary>
     /// Set to true after confirmation is received.

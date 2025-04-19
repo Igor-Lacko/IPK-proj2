@@ -1,5 +1,3 @@
-/* Common interface for readable inputs from either the server (messages) or user (messages/commands) */
-
 namespace IPK_25_CHAT.Interface;
 
 using IPK_25_CHAT.Enum;

@@ -1,8 +1,7 @@
-/* Contains the PING message. */
-
 namespace IPK_25_CHAT.Message;
 
 using IPK_25_CHAT.Enum;
+
 using System.Net;
 
 /// <summary>

@@ -1,11 +1,10 @@
-/* Implementation of argument parsing and filling the CommandLineArguments struct */
+namespace IPK_25_CHAT.Arguments;
 
-using System.Net;
-using System.Net.Sockets;
 using IPK_25_CHAT.Command;
 using IPK_25_CHAT.Enum;
 
-namespace IPK_25_CHAT.Arguments;
+using System.Net;
+using System.Net.Sockets;
 
 /// <summary>
 /// Contains methods for parsing and filling the CommandLineArguments struct.

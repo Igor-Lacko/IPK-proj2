@@ -1,9 +1,8 @@
-/* Contains the CONFIRM message. */
-
 namespace IPK_25_CHAT.Message;
 
-using System.Net;
 using IPK_25_CHAT.Enum;
+
+using System.Net;
 
 /// <summary>
 /// Class representing the CONFIRM message. This message is UDP specific, and as such is only used in binary form.
@@ -12,7 +11,7 @@ using IPK_25_CHAT.Enum;
 public class ConfirmMessage(ushort messageID) : Message(MessageType.CONFIRM)
 {
     /// <summary>
-    /// ID of the message that was being comfirmed.
+    /// ID of the message that was being confirmed.
     /// </summary>
     private ushort RefMessageID = messageID;
 
@@ -21,7 +20,7 @@ public class ConfirmMessage(ushort messageID) : Message(MessageType.CONFIRM)
     /// Might not even be used for this mesasge type..?
     /// </summary>
     /// <param name="clientState">Current state of the client.</param>
-    /// <returns>True if the message is valid, else false.</returns>
+    /// <returns>Always true. On each sent client message there has to be a confirm received.</returns>
     public override bool IsValid(State clientState) => true;
 
     /// <summary>

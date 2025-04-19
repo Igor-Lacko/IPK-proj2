@@ -1,5 +1,3 @@
-/* Has a class which contains user data */
-
 namespace IPK_25_CHAT.Client;
 
 /// <summary>

@@ -1,9 +1,8 @@
-/* Contains the AUTH message. */
-
 namespace IPK_25_CHAT.Message;
 
 using IPK_25_CHAT.Command;
 using IPK_25_CHAT.Enum;
+
 using System.Text;
 using System.Net;
 
@@ -14,12 +13,12 @@ using System.Net;
 public class AuthMessage(AuthCommand command) : Message(MessageType.AUTH)
 {
     /// <summary>
-    /// Username of the user.
+    /// Username.
     /// </summary>
     private readonly string Username = command.Username;
 
     /// <summary>
-    /// Password of the user.
+    /// User password.
     /// </summary>
     private readonly string Secret = command.Secret;
 
@@ -32,7 +31,7 @@ public class AuthMessage(AuthCommand command) : Message(MessageType.AUTH)
     /// Checks if the message is valid in the current client state.
     /// </summary>
     /// <param name="clientState">Current state of the client.</param>
-    /// <returns>True if the message is valid, else false.</returns>
+    /// <returns>True if clientState == START or AUTH, invalid otherwise.</returns>
     public override bool IsValid(State clientState) => clientState == State.START || clientState == State.AUTH;
 
     /// <summary>

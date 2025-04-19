@@ -1,5 +1,3 @@
-/* Contains the JOIN command class */
-
 namespace IPK_25_CHAT.Command;
 
 using IPK_25_CHAT.Enum;

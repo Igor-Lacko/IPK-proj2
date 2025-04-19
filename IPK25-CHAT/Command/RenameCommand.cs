@@ -1,5 +1,3 @@
-/* Contains the RENAME command class */
-
 namespace IPK_25_CHAT.Command;
 
 using IPK_25_CHAT.Enum;
@@ -17,10 +15,9 @@ public class RenameCommand(string displayName) : Command(CommandType.RENAME)
     public readonly string DisplayName = displayName;
 
     /// <summary>
-    /// Validates the rename command. Is valid if the user has a set display name.
-    /// (E.g. in any state after AUTH, so not AUTH or START)
+    /// Is always valid. Is a local command, the user can always set their name locallly.
     /// </summary>
     /// <param name="clientState">Current state of the client.</param>
-    /// <returns>True if the command is valid, else false.</returns>
-    public override bool IsValid(State clientState) => !(clientState == State.AUTH || clientState == State.START);
+    /// <returns>True.</returns>
+    public override bool IsValid(State clientState) => true;
 }

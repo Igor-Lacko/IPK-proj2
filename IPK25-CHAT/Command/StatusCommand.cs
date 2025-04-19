@@ -1,10 +1,9 @@
-/* Contains the class of the extra /status command, which shows the current user status */
-
 namespace IPK_25_CHAT.Command;
 
-using System.Net;
 using IPK_25_CHAT.Client;
 using IPK_25_CHAT.Enum;
+
+using System.Net;
 
 /// <summary>
 /// Class for the /status command.

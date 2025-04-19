@@ -1,5 +1,3 @@
-/* Contains a common interface for TCP/UDP communication with the server */
-
 namespace IPK_25_CHAT.Interface;
 
 using IPK_25_CHAT.Message;

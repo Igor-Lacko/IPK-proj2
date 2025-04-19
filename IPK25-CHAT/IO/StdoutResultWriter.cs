@@ -1,9 +1,10 @@
-/* Static class for stdout prints. */
-
 namespace IPK_25_CHAT.IO;
 
 using IPK_25_CHAT.Message;
 
+/// <summary>
+/// Static class for client output.
+/// </summary>
 public static class StdoutResultWriter
 {
     /// <summary>

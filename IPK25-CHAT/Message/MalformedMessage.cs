@@ -1,5 +1,3 @@
-/* Contains the class for a malformed message. Used for local client errors. */
-
 namespace IPK_25_CHAT.Message;
 
 using IPK_25_CHAT.Enum;
@@ -23,9 +21,9 @@ public class MalformedMessage(ushort? messageId) : Message(MessageType.MALFORMED
     public override bool IsValid(State clientState) => true;
 
     /// <summary>
-    /// Converts the message to a byte array.
+    /// Throws an exception, since the client can't send malformed messages.
     /// </summary>
-    /// <returns>Byte array representation of the message.</returns>
+    /// <throws exception cref="ArgumentException">Always thrown.</exception>
     public override byte[] AsBytes(ushort messageID)
     {
         throw new ArgumentException("Malformed message cannot be converted to bytes.");

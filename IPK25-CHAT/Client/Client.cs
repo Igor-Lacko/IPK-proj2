@@ -1,14 +1,12 @@
-/* Contains an abstract class for a client. */
-
 namespace IPK_25_CHAT.Client;
 
-using System.Net;
-using IPK_25_CHAT.IO;
-using IPK_25_CHAT.Command;
 using IPK_25_CHAT.Message;
+using IPK_25_CHAT.Command;
+using IPK_25_CHAT.IO;
 using IPK_25_CHAT.Interface;
 using IPK_25_CHAT.Enum;
 
+using System.Net;
 
 /// <summary>
 /// Abstract base class representing a client instance.

@@ -1,10 +1,9 @@
-/* Contains the MSG message. */
-
 namespace IPK_25_CHAT.Message;
+
+using IPK_25_CHAT.Enum;
 
 using System.Net;
 using System.Text;
-using IPK_25_CHAT.Enum;
 
 /// <summary>
 /// Class representing the MSG message.
@@ -38,7 +37,7 @@ public class MsgMessage(string displayName, string messageContent, ushort messag
     /// Checks if the message is valid in the current client state.
     /// </summary>
     /// <param name="clientState">Current state of the client.</param>
-    /// <returns>True if the message is valid, else false.</returns>
+    /// <returns>True if clientState == OPEN or JOIN, we can't receive messages otherwise.</returns>
     public override bool IsValid(State clientState) => clientState == State.OPEN || clientState == State.JOIN;
 
     /// <summary>
@@ -108,7 +107,7 @@ public class MsgMessage(string displayName, string messageContent, ushort messag
     public override string ToString() => $"MSG FROM {DisplayName} IS {MessageContent}\r\n";
 
     /// <summary>
-    /// Returns the message id. Needed for compatibility with the Message class.
+    /// Returns the message id.
     /// </summary>
     /// <returns>Message ID.</returns>
     public override ushort GetMessageID() => MessageID;

@@ -1,10 +1,9 @@
-/* Contains the JOIN message. */
-
 namespace IPK_25_CHAT.Message;
+
+using IPK_25_CHAT.Enum;
 
 using System.Net;
 using System.Text;
-using IPK_25_CHAT.Enum;
 
 /// <summary>
 /// Class representing the JOIN message.
