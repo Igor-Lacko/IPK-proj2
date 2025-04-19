@@ -7,32 +7,57 @@ It was implemented as a part of the IPK (Computer Communications and Networks) c
 Faculty of Information Technology.
 
 ## Table of contents
-todo
-
+1. [Theoretical overview](#theoretical-overview)
+    - [Sockets](#sockets)
+    - [Transmission Control Protocol (TCP)](#transmission-control-protocol-tcp)
+    - [User Datagram Protocol (UDP)](#user-datagram-protocol-udp)
+        - [Connected UDP sockets](#connected-udp-sockets)
+2. [Used tools](#used-tools)
+3. [Program usage](#program-usage)
+4. [Implementation](#implementation)
+    - [Shared behavior between variants](#shared-behaviour-between-variants)
+        - [Client class](#client-class)
+        - [User IO](#user-io)
+        - [Processing messages with the server](#processing-messages-with-the-server)
+        - [Input validation](#input-validation)
+        - [Message and Command classes and their types](#message-and-command-classes-and-their-types)
+    - [The TCP variant](#the-tcp-variant)
+        - [Class diagram for this variant](#class-diagram-for-this-variant)
+        - [Description of the unique features of this variant](#description-of-the-unique-features-of-this-variant)
+    - [The UDP variant](#the-udp-variant)
+        - [Class diagram for this variant](#class-diagram-for-this-variant-1)
+        - [Description of the unique features of this variant](#description-of-the-unique-features-of-this-variant-1)
+5. [Testing](#testing)
+    - [TCP testing](#tcp-testing)
+        - [Functionality testing](#functionality-testing)
+        - [Testing invalid cases](#testing-invalid-cases)
+        - [Captured pcap files from the reference server](#captured-pcap-files-from-the-reference-server)
+    - [UDP testing](#udp-testing)
+        - [Functionality testing](#functionality-testing-1)
+        - [Testing invalid cases](#testing-invalid-cases-1)
+        - [Captured pcap files from the reference server](#captured-pcap-files-from-the-reference-server-1)
+6. [Bibliography](#bibliography)
 ## Theoretical overview
+### Sockets
+Sockets are one endpoint in a two way internet communication, defined by an IP address and a port number [[Geeksforgeeks]](#bibliography). In case of connected/stream sockets they also have an destination IP address and port associated with them. These are sockets that provide reliable in order byte streams for data transmission [[IBM]](#bibliography). Along with stream sockets, other important type is the datagram socket, which acts more like a mailbox [[Geeksforgeeks]](#bibliography) and provides datagrams instead of streams, which are connectionless messages with fixed message length and do not guarantee the order or delivery of messages [[IBM]](#bibliography). The TCP uses stream sockets, while the UDP uses datagram sockets.
 
-### Transmission control protocol (TCP)
-The TCP is a transport layer protocol which is well characterized by reliable delivery
-of data (being able to solve problems such as packet loss), being connection-oriented, and providing a in-order byte stream [[RFC9293]](#bibliography). 
-Because of these features, the TCP is commonly utilized in applications that require reliable data transfer, web browsing, email or file transfer [[Techtarget]](#bibliography). 
-However, the reliablility guarantees can introduce significant overhead, which is why the TCP isn't suitable for all use cases. The TCP is most recently specified in [[RFC9293]](#bibliography).
+### Transmission Control Protocol (TCP)
+The TCP is a transport layer protocol which is well characterized by reliable delivery of data (being able to solve problems such as packet loss), being connection-oriented, and providing a in-order byte stream [[RFC9293]](#bibliography). Because of these features, the TCP is commonly utilized in applications that require reliable data transfer, web browsing, email or file transfer [[Techtarget]](#bibliography). However, the reliablility guarantees can introduce significant overhead, which is why the TCP isn't suitable for all use cases. Because of the reliability of TCP, in context of this project the only problem to be solved for the client is detecting message delimiters.  The TCP is most recently specified in [[RFC9293]](#bibliography).
 ***
-### User datagram protocol (UDP)
-The UDP is the less reliable, faster counterpart to TCP. It's characterized by being
-connectionless, meaning it sends and receives messages without maintaining any state
-between it and the receiver (sometimes also called "fire and forget") [[Spiceworks]](#bibliography). This can be partially
-"side-stepped" by using connected UDP sockets (described more in the respective subsection).
-The UDP is commonly used in applications that do not require strict reliability
-when it comes to data transimission but are more performance-heavy (e.g. realtime applications, such as broadcasting) [[Spiceworks]](#bibliography).
-The UDP is most recently specidfied in [[RFC768]](#bibliography).
+### User Datagram Protocol (UDP)
+The UDP is the less reliable, faster counterpart to TCP. It's characterized by being connectionless, meaning it sends and receives messages without maintaining any state
+between it and the receiver (sometimes also called "fire and forget") [[Spiceworks]](#bibliography). It does not guarantee delivery of data and duplicate protection [[RFC768]](#bibliography). The UDP is commonly used in applications that do not require strict reliability when it comes to data transimission but are more performance-heavy (e.g. realtime applications, such as broadcasting) [[Spiceworks]](#bibliography). Due to the UDP's unreliablity, there are more problems to be solved in this variant, such as message confirmation or retrasmissions. The UDP is most recently specified in [[RFC768]](#bibliography).
 
 #### Connected UDP sockets
-Connected UDP sockets are UDP sockets that have a full 4 tuple (e.g. source and destination ip address and port) associated.
-They are preferable for client applications (such as this project) and outbound traffic in general, due to optimizing route
-lookup using a connection struct [[Cloudflare]](#bibliography). In addition to that, in the case of this project they made communication with the server
-via UDP much more comfortable (described more in the appropriate section). They work by enabling an application to associate
-the socket with the socket name of a peer [[IBM]](#bibliography). This enables the socket to use methods/functions like Receive() and Send() instead
-of ReceiveFrom() or SendTo() since the destination/source is always known.
+Connected UDP sockets are UDP sockets that have a full 4 tuple (e.g. source and destination ip address and port) associated. They are preferable for client applications (such as this project) and outbound traffic in general, due to optimizing route lookup using a connection struct [[Cloudflare]](#bibliography). In addition to that, in the case of this project they made communication with the server via UDP much more comfortable (described more in the appropriate section). They work by enabling an application to associate the socket with the socket name of a peer [[IBM]](#bibliography). This enables the socket to use methods/functions like Receive() and Send() instead of ReceiveFrom() or SendTo() since the destination/source is always known. An even better variant for this project would be C#'s **UDPClient** class which provides a higher abstraction over this, but i found out about that too late into development.
+
+## Used tools
+This program was implemented in the C# programming language. Other tools used during development, testing and documentation are:<br>
+    **1. Netcat**: Used as a mock server for testing and debugging (mainly for the TCP variant).<br>
+    **2. Wireshark**: Used for testing and debbuging and for capturing pcaps into the documentation.<br>
+    **3. AI tools (ChatGPT/Github Copilot)**: Used for debugging, explaining how some specific C# features work (events used in the **UserInputReader** and **IServerCommunicator** and it's subclasses, or how do cancellation tokens work and throw exceptions), helping generate boilerplate/repetitive comments (e.g. XML documentation for instance attributes or methods that repeat during multiple classes, like message types with the same parameters or comments for repeated code in their parsing methods, or comments for overriden methods that have similiar structure/repeated code in general). Also helped generate the code of the testing mock servers (found in the *Servers/* folder).<br>
+    **4. Lucidchart**: Diagramming tool used to create the UML diagrams found in the *UML/* folder (and this documentation).<br>
+    **5. Reference tools**: The wireshark dissector plugin for the IPK25CHAT protocol and the reference server.
 
 ## Program usage 
 To run the program, follow these steps:
@@ -76,7 +101,7 @@ and handles it's logic on a high level. This class implements a finite state mac
 runs in a loop and reacts to events, until one of these events ends the program (a BYE message from the server, the user exits, or a invalid message from the server is received). These events are invoked by the classes that compose Client, such as **UserInputReader** or **IServerCommunicator**.
 The client also delegates low-level tasks such as reading user/server input and sending messages to the server to these classes.
 Each state is implemented as one method which reacts to user/server input in a specific way. Each incoming server/user input
-is validated (the validness of each input in each state can be seen from the todo link section).
+is validated by the **UserInputValidator**.
 
 #### User IO
 The process for reading user input is driven by the **UserInputReader**, **UserInputValidator**, and **InputQueue** classes.
@@ -115,7 +140,7 @@ The only non-shared feature in the TCP variant is the **TCPServerCommunicator**.
 #### Class diagram for this variant
 ![UDPServerCommunicator](/UML/UDPCommunicator.png)
 #### Description of the unique features of this variant
-In addition to the **UDPServerCommunicator** as the unique feature, the **UDPClient** class also overrides some methods from the superclass, concretely the parts where user input is processed and a message is sent, since the client has to get a confirmation. In case it doesn't, the **OnMessageTimeout** method is invoked, which ends the program with an error code. When it comes to the communication with the server, the **UDPServerCommunicator** utilizes a connected UDP socket. At first, when sending the initial AUTH message, the socket is unconnected. For this period, `SendToAsync()` and `ReceiveFromAsync()` are used for communication. Each incoming datagram's sender IP address is then inspected, and if it does not match the server's, the datagram is dropped. When the server sends a datagram to the client from the allocated port, the communicator calls `Connect()` and maintains this connection for the rest of the program run. This allows the communicator to call methods like `ReceiveAsync()` and `SendAsync()` and not worry about where the datagrams may come from or arrive at. An issue the communicator has to solve is message confirmation. For this, it keeps a dictionary of sent messages (which will probably always have a size of 1, since the communicator waits for confirmation before sending another message, except CONFIRM which the communicator sends without waiting). The key is their ID and the value is a **MessageStateInformation** structure. This structure contains a task completion source which is set to true when the message is confirmed, and it's task, which is awaited until the message is confirmed (or it times out). On confirm, key value pairs with the key being the confirmed message ID are removed from the dictionary, unless they are request messages (AUTH or JOIN) where they are removed after a confirm and a reply. Confirm or reply messages that have invalid ref message ID's are dropped. On a message confirmation timeout, a **ConfirmTimeouted** event is invoked, leading to the client terminating the program. Incoming datagrams are processed by calling `Message.Parse()` which calls the parsing method for each message type and returns the result (or a **MalformedMessage** object). Then the communicator either invokes the **MessageReceived** event, or just sends a confirm (in the case of a PING message) or sets a task waiting for confirmation to completed (in the case of a CONFIRM message).
+In addition to the **UDPServerCommunicator** as the unique feature, the **UDPClient** class also overrides some methods from the superclass, concretely the parts where user input is processed and a message is sent, since the client has to get a confirmation. In case it doesn't, the **OnMessageTimeout** method is invoked, which ends the program with an error code. When it comes to the communication with the server, the **UDPServerCommunicator** utilizes a connected UDP socket. At first, when sending the initial AUTH message, the socket is unconnected. For this period, `SendToAsync()` and `ReceiveFromAsync()` are used for communication. Each incoming datagram's sender IP address is then inspected, and if it does not match the server's, the datagram is dropped. When the server sends a datagram to the client from the allocated port, the communicator calls `Connect()` and maintains this connection for the rest of the program run. This allows the communicator to call methods like `ReceiveAsync()` and `SendAsync()` and not worry about where the datagrams may come from or arrive at. An issue the communicator has to solve is message confirmation. For this, it keeps a dictionary of sent messages. The key is their ID and the value is a **MessageStateInformation** structure. This structure contains a task completion source which is set to true when the message is confirmed, and it's task, which is awaited until the message is confirmed (or it times out). Confirm messages that are referencing an already sent message are ignored, and confirm or reply messages that have invalid ref message ID's are treated as malformed. On a message confirmation timeout, a **ConfirmTimeouted** event is invoked, leading to the client terminating the program. Incoming datagrams are processed by calling `Message.Parse()` which calls the parsing method for each message type and returns the result (or a **MalformedMessage** object). Then the communicator either invokes the **MessageReceived** event, or just sends a confirm (in the case of a PING message) or sets a task waiting for confirmation to completed (in the case of a CONFIRM message).
 
 ## Testing
 This section shows some scenarios which the program was tested on, manually and with input piped from a file (found in the TestInputs/). In general, testing for both variants can be split into 3 parts --> functionality (e.g. sending and receiving messages and some variant-specific cases, invalid cases, where the client is supposed to either terminate with a error code or show a local error (these are mostly identical for both variants, except some variant specific cases), and the third part shows some captured pcaps (found in the *Pcaps/* folder) which display communication on the reference server. Each of the variants has one pcap file displaying a short conversation (auth, message and bye) and a longer one with renaming and joining channels. For each variant a mock server was used for testing: found in the *Server/* folder. The servers support the following commands:<br>
@@ -134,12 +159,11 @@ This section shows some scenarios which the program was tested on, manually and 
 | malformed [CONTENT]    | Both servers | Sends just [CONTENT], terminated by '\r\n'. Basically equivalent to `msgend`, though used for different scenarios. |
 | nonconfirmnext         | UDPServer.py | The server will not send a CONFIRM to the next received message.                                                   |
 
-*Note: The UDP server also supports the `-delay [ms]` and  `-errbye-delay [ms]` command-line arguments which respectively set the delay before sending a CONFIRM to a received message and set the delay before sending one ERR/BYE retransmission*
-
+*Note: The UDP server also supports the `-delay [ms]` and  `-errbye-delay [ms]` command-line arguments which respectively set the delay before sending a CONFIRM to a received message and set the delay before sending one ERR/BYE retransmission*<br>
 
 ### TCP testing
 Startup for all tests in this section was done by running `python3 Server/TCP/TCPServer.py` and `./ipk25chat-client -t tcp -s localhost -p 4567` with either a input file piped into the client or a series of commands typed in (one of these is described in each case), and a series of commands typed into the server.
-
+### Functionality testing
 ### Test case 1: Exchanging messages with the server, then switching channel, renaming and exchanging some more
 **Description**: This test case covers all the basic client functionality. The client first authenticates, then exchanges some messages, then joins a channel, renames, exchanges some more messages and disconnects. I have decided not to include the elementary individual cases (e.g. auth, sending a message...) because they are covered by this one.<br>
 **Client commands**:
@@ -324,7 +348,7 @@ CONTENT: Invalid message type REPLY in state OPEN
 ```
 **Client exit code**: 50 (invalid message)<br>
 ### Test case 4: Timeout when waiting for a reply
-**Description
+**Description**: This tests that the client sends an ERR message and terminates with an exit code if he does not receive a reply message in time.
 **Input file**: TestInputs/auth<br>
 **Server commands**: None<br>
 **Client output**:
@@ -343,6 +367,7 @@ DISPLAYNAME: l
 CONTENT: Timeout when waiting for reply to authentication
 ```
 ### Test case 5: Trying to send too long message
+**Description**: This tests that the client truncates message contents longer than the max value (60000 for TCP), prints a local error and sends the truncated message.
 **Input file**: TestInputs/too_long_msg_tcp<br>
 **Client output**:
 ```
@@ -373,7 +398,7 @@ DISPLAYNAME: l
 **Image**: ![TCP long convo](/Screenshots/tcp_long.png)<br>
 ### UDP testing
 For this variant, it's run the same as the TCP one except we are using `UDP/UDPServer.py`. The server is run with the `-delay [ms]` or `-errbye-delay [ms]` argument in some cases to test retransmissions. Also in some cases, it was tested on the reference server (a screenshot is included instead of a server command in such cases).<br>
-### Functionality
+### Functionality testing
 ### Test case 1: Exchanging messages with the server, then switching channel, renaming and exchanging some more
 **Description**: The equivalent of test case 1 of the TCP variant. Tests basic client functionality.<br>
 **Client commands**:
@@ -450,7 +475,7 @@ DISPLAYNAME: klient
 ```
 ### Test case 2: Receiving a CONFIRM on the second retransmission
 **Description**: This tests that the client correctly retransmits a message upon not receiving a CONFIRM in time.<br>
-**Server arguments**: `-delay 400`<br
+**Server arguments**: `-delay 400`<br>
 **Server commands**:
 ```
 reply ok
@@ -554,18 +579,16 @@ REFID: 1
 ```
 ### Testing invalid cases
 ### Test case 1: Receiving a malformed message from the server
-**Input file**: TestInputs/auth
-
+**Description**: Equivalent to the TCP case, tests that the client sends a ERR message and terminates upon receiving a malformed message. Since the client tries to send a CONFIRM for all messages that have some semblance of a message ID (e.g. 3 bytes or longer) it results in a weird value in the message id for CONFIRM seen below.<br>
+**Input file**: TestInputs/auth<br>
 **Server commands**:
 ```
 malformed zla sprava
 ```
-
 **Client output**:
 ```
 ERROR: Malformed message received
 ```
-
 **Server output**:
 ```
 TYPE: AUTH
@@ -582,21 +605,19 @@ DISPLAYNAME: l
 CONTENT: Malformed message received
 ```
 ### Test case 2: Receiving a MSG message in auth state
-**Input file**: TestInputs/auth
-
+**Description**: Equivalent to the second TCP case. Tests that the client sends a ERR message and terminates with an exit code upon receiving a MSG when in auth (waiting for a REPLY).<br>
+**Input file**: TestInputs/auth<br>
 **Server commands**:
 ```
 msg ok
 ```
-
 **Client output**:
 ```
 ERROR: Invalid message MSG for state AUTH
 ```
-
 **Server output**:
 ```
-TTYPE: AUTH
+TYPE: AUTH
 ID: 0
 USERNAME: j
 DISPLAYNAME: l
@@ -610,6 +631,7 @@ CONTENT: Invalid message type MSG in state AUTH
 ```
 **Client exit code**: 50 (invalid message)<br>
 ### Test case 3: Receiving a REPLY message in open state
+**Description**: Tests basically the same as the above case, except a different message (REPLY) in a different state (open).
 **Client commands**:
 ```
 /auth j k l
@@ -727,4 +749,6 @@ SECRET: k
 [Spiceworks] Basumallick, C. *TCP vs UDP: understanding 10 Key Differences* [online]. April 2022. [cited 2025-04-14]. Avaliable at: https://www.spiceworks.com/tech/networking/articles/tcp-vs-udp/<br>
 [Cloudflare] Majkowski, M. *Everything you ever wanted to know about UDP sockets but were afraid to ask, part 1* [online]. November 2021. [cited 2025-04-14]. Avaliable at: https://blog.cloudflare.com/everything-you-ever-wanted-to-know-about-udp-sockets-but-were-afraid-to-ask-part-1/<br>
 [IBM] *CONNECT* [online]. April 2023. [cited 2025-04-15]. Avaliable at: https://www.ibm.com/docs/en/zos/3.1.0?topic=functions-connect<br>
-[RFC768] Postel, J. *User Datagram Protocol* [online]. [cited 2025-04-15]. DOI: 10.17487/RFC0768. Avaliable at: https://datatracker.ietf.org/doc/html/rfc768
+[RFC768] Postel, J. *User Datagram Protocol* [online]. [cited 2025-04-15]. DOI: 10.17487/RFC0768. Avaliable at: https://datatracker.ietf.org/doc/html/rfc768<br>
+[Geeksforgeeks] *Socket in computer network* [online]. [cited 2025-04-20]. Avaliable at: https://www.geeksforgeeks.org/socket-in-computer-network/<br>
+[IBM] *Socket types* [online]. [cited 2025-04-20]. Avaliable at: https://www.ibm.com/docs/pl/aix/7.1?topic=protocols-socket-types
