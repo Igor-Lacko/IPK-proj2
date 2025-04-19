@@ -486,10 +486,5 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-*.pdf
-
 # Notes and sources
 *.txt
-
-# Not finished yet
-/Server/
