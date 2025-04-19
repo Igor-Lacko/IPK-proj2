@@ -118,183 +118,30 @@ The only non-shared feature in the TCP variant is the **TCPServerCommunicator**.
 In addition to the **UDPServerCommunicator** as the unique feature, the **UDPClient** class also overrides some methods from the superclass, concretely the parts where user input is processed and a message is sent, since the client has to get a confirmation. In case it doesn't, the **OnMessageTimeout** method is invoked, which ends the program with an error code. When it comes to the communication with the server, the **UDPServerCommunicator** utilizes a connected UDP socket. At first, when sending the initial AUTH message, the socket is unconnected. For this period, `SendToAsync()` and `ReceiveFromAsync()` are used for communication. Each incoming datagram's sender IP address is then inspected, and if it does not match the server's, the datagram is dropped. When the server sends a datagram to the client from the allocated port, the communicator calls `Connect()` and maintains this connection for the rest of the program run. This allows the communicator to call methods like `ReceiveAsync()` and `SendAsync()` and not worry about where the datagrams may come from or arrive at. An issue the communicator has to solve is message confirmation. For this, it keeps a dictionary of sent messages (which will probably always have a size of 1, since the communicator waits for confirmation before sending another message, except CONFIRM which the communicator sends without waiting). The key is their ID and the value is a **MessageStateInformation** structure. This structure contains a task completion source which is set to true when the message is confirmed, and it's task, which is awaited until the message is confirmed (or it times out). On confirm, key value pairs with the key being the confirmed message ID are removed from the dictionary, unless they are request messages (AUTH or JOIN) where they are removed after a confirm and a reply. Confirm or reply messages that have invalid ref message ID's are dropped. On a message confirmation timeout, a **ConfirmTimeouted** event is invoked, leading to the client terminating the program. Incoming datagrams are processed by calling `Message.Parse()` which calls the parsing method for each message type and returns the result (or a **MalformedMessage** object). Then the communicator either invokes the **MessageReceived** event, or just sends a confirm (in the case of a PING message) or sets a task waiting for confirmation to completed (in the case of a CONFIRM message).
 
 ## Testing
-This section shows some scenarios which the program was tested on, manually and with input piped from a file (found in the TestInputs/). In general, testing for both variants can be split into 3 parts --> functionality (e.g. sending and receiving messages which are mostly identical with some variant-specific cases), invalid cases, where the client is supposed to either terminate with a error code or show a local error, and the third part shows some captured pcaps (found in the *Pcaps/* folder) which display communication on the reference server. Each of the variants has one pcap file displaying a short conversation (auth, message and bye) and a longer one with renaming and joining channels. For each variant a mock server was used for testing: found in the *Server/* folder. These servers share the same interface, as they provide some simple user commands to send replies to the client. These are:<br>
-    1. **msg [CONTENT]**: Sends a MSG message with [CONTENT].
-    2. **reply [CONTENT]**: Sends a positive REPLY message with [CONTENT].
-    3. **reply! [CONTENT]**: Sends a negative REPLY message with [CONTENT].
-    4. **bye**: Sends a BYE mesasge.
-    5. **err [CONTENT]**: Sends a ERR message with the given content.
-    6. **ping**: **UDPServer.py** only. Sends a PING message.
-    7. **malformed [CONTENT]**: Sends just [CONTENT], encoded into a byte array or as a string terminated with `\r\n` based on the protocol.
+This section shows some scenarios which the program was tested on, manually and with input piped from a file (found in the TestInputs/). In general, testing for both variants can be split into 3 parts --> functionality (e.g. sending and receiving messages and some variant-specific cases, invalid cases, where the client is supposed to either terminate with a error code or show a local error (these are mostly identical for both variants, except some variant specific cases), and the third part shows some captured pcaps (found in the *Pcaps/* folder) which display communication on the reference server. Each of the variants has one pcap file displaying a short conversation (auth, message and bye) and a longer one with renaming and joining channels. For each variant a mock server was used for testing: found in the *Server/* folder. The servers support the following commands:<br>
+| Command                | Supported by | Effect                                                                                                             |
+| ---------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| msg [CONTENT]          | Both servers | Sends a MSG message with the given [CONTENT]                                                                       |
+| msgstart [CONTENT]     | TCPServer.py | Sends the start of a msg message `(MSG FROM DNAME IS CONTENT)`, not yet terminated by `\r\n`.                      |
+| msgpart [CONTENT]      | TCPServer.py | Sends just [CONTENT], not terminated by `\r\n`. Should be used after the previous command.                         |
+| msgend [CONTENT]       | TCPServer.py | Sends just [CONTENT], terminated by `\r\n`. Should be used after the previous two commands.                        |
+| msgmultiple [CONTENTS] | TCPServer.py | Sends multiple MSG messages with each space-split part of [CONTENTS] as the content, each delimited by `\r\n`.     |
+| reply [CONTENT]        | Both servers | Sends a positive REPLY message with the given [CONTENT].                                                           |
+| reply! [CONTENT]       | Both servers | Sends a negative REPLY message with the given [CONTENT].                                                           |
+| bye                    | Both servers | Sends a BYE message.                                                                                               |
+| err [CONTENT]          | Both servers | Sends a ERR message with the given [CONTENT].                                                                      |
+| ping                   | UDPServer.py | Sends a PING message.                                                                                              |
+| malformed [CONTENT]    | Both servers | Sends just [CONTENT], terminated by '\r\n'. Basically equivalent to `msgend`, though used for different scenarios. |
+| nonconfirmnext         | UDPServer.py | The server will not send a CONFIRM to the next received message.                                                   |
+
+*Note: The UDP server also supports the `-delay [ms]` and  `-errbye-delay [ms]` command-line arguments which respectively set the delay before sending a CONFIRM to a received message and set the delay before sending one ERR/BYE retransmission*
+
 
 ### TCP testing
 Startup for all tests in this section was done by running `python3 Server/TCP/TCPServer.py` and `./ipk25chat-client -t tcp -s localhost -p 4567` with either a input file piped into the client or a series of commands typed in (one of these is described in each case), and a series of commands typed into the server.
 
-### Functionality
-### Test case 1: Successful authentication
-**Input file**: TestInputs/auth
-
-**Server commands**:
-```
-reply ano
-```
-
-**Client output**:
-```
-Action Success: ano
-```
-
-**Server output**:
-```
-TYPE: AUTH
-USERNAME: j
-DISPLAYNAME: l
-SECRET: k
-
-TYPE: BYE
-DISPLAYNAME: l
-```
-
-### Test case 2: Unsuccessful authentication
-**Input file**: TestInputs/auth
-
-**Server commands**:
-```
-reply! nie
-```
-
-**Client output**:
-```
-Action Failure: nie
-```
-**Server output**:
-```
-TYPE: AUTH
-USERNAME: j
-DISPLAYNAME: l
-SECRET: k
-
-TYPE: BYE
-DISPLAYNAME: l
-```
-
-### Test case 3: Sending a message
-**Input file**: TestInputs/one_message
-
-**Server commands**:
-```
-reply ano
-```
-
-**Client output**:
-```
-Action Success: ano
-```
-
-**Server output**:
-```
-TYPE: AUTH
-USERNAME: j
-DISPLAYNAME: l
-SECRET: k
-
-TYPE: MSG
-DISPLAYNAME: l
-CONTENT: ahoj
-TYPE: BYE
-DISPLAYNAME: l
-```
-
-### Test case 4: Joining a channel and then sending a message
-**Input file**: TestInputs/join
-
-**Server commands**:
-```
-reply ano
-reply ano
-```
-
-**Client output**:
-```
-Action Success: ano
-Action Success: ano
-```
-
-**Server output**:
-```
-TYPE: AUTH
-USERNAME: a
-DISPLAYNAME: c
-SECRET: b
-TYPE: JOIN
-DISPLAYNAME: c
-TYPE: MSG
-DISPLAYNAME: c
-CONTENT: toto
-TYPE: BYE
-DISPLAYNAME: c
-```
-
-### Test case 5: Renaming and then sending a message
-**Input file**: TestInputs/rename
-
-**Server commands**:
-```
-reply ano
-```
-
-**Client output**:
-```
-Action Success: ano
-```
-
-**Server output**:
-```
-TYPE: AUTH
-USERNAME: ahoj
-DISPLAYNAME: ahoooj
-SECRET: ahooj
-TYPE: MSG
-DISPLAYNAME: nove_meno
-CONTENT: premenovana
-TYPE: BYE
-DISPLAYNAME: nove_meno
-```
-
-### Test case 6: Sending a message and receiving one from the server
-**Client commands**:
-```
-/auth j k l
-ahoj server!
-// press CTRL + C
-```
-
-**Server commands**:
-```
-reply ano
-msg ahoj klient!
-```
-
-**Client output**:
-```
-Action Success: ano
-SERVER: ahoj klient!
-```
-
-**Server output**:
-```
-TYPE: AUTH
-USERNAME: j
-DISPLAYNAME: l
-SECRET: k
-TYPE: MSG
-DISPLAYNAME: l
-CONTENT: ahoj server!
-TYPE: BYE
-DISPLAYNAME: l
-```
-
-### Test case 7: Exchanging messages with the server, then switching channel, renaming and exchanging some more
+### Test case 1: Exchanging messages with the server, then switching channel, renaming and exchanging some more
+**Description**: This test case covers all the basic client functionality. The client first authenticates, then exchanges some messages, then joins a channel, renames, exchanges some more messages and disconnects. I have decided not to include the elementary individual cases (e.g. auth, sending a message...) because they are covered by this one.<br>
 **Client commands**:
 ```
 /auth j k l
@@ -315,7 +162,6 @@ msg ako sa mas?
 reply ano
 msg jupi maj sa!
 ```
-
 **Client output**:
 ```
 Action Success: ok
@@ -324,7 +170,6 @@ SERVER: ako sa mas?
 Action Success: ano
 SERVER: jupi maj sa!
 ```
-
 **Server output**:
 ```
 TYPE: AUTH
@@ -348,21 +193,76 @@ CONTENT: uz sa volam klient!
 TYPE: BYE
 DISPLAYNAME: klient
 ```
-
+### Test case 2: Receiving multiple messages in one segment
+**Description**: This tests that the client correctly identifies multiple messages delimited by `\r\n` in one packet.<br>
+**Client commands**:
+```
+/auth j k l
+// Press CTRL + C
+```
+**Server commands**:
+```
+reply ok
+msgmultiple ahoj klient ako sa mas?
+```
+**Client output**:
+```
+Action Success: ok
+SERVER: ahoj
+SERVER: klient
+SERVER: ako
+SERVER: sa
+SERVER: mas?
+```
+**Server output**:
+```
+TYPE: AUTH
+USERNAME: j
+DISPLAYNAME: l
+SECRET: k
+TYPE: BYE
+DISPLAYNAME: l
+```
+### Test case 3: Receiving one message in multiple segments
+**Description**: The opposite of the previous test. Tests that the client correctly waits until it detects `\r\n` to identify a message.<br>
+**Client commands**:
+```
+/auth j k l
+// Press CTRL + C
+```
+**Server commands**:
+```
+reply ok
+msgstart ahoj klient
+msgpart ako sa
+msgend mas?
+```
+**Client output**:
+```
+TYPE: BYE
+DISPLAYNAME: l
+```
+**Server output**:
+```
+TYPE: AUTH
+USERNAME: j
+DISPLAYNAME: l
+SECRET: k
+TYPE: BYE
+DISPLAYNAME: l
+```
 ### Testing invalid cases
 ### Test case 1: Receiving a malformed message from the server
-**Input file**: TestInputs/auth
-
+**Description**: This case tests that the client terminates correctly upon receiving a malformed message (local error, ERR message, terminate with exit code).<br>
+**Input file**: TestInputs/auth<br>
 **Server commands**:
 ```
 malformed zla sprava
 ```
-
 **Client output**:
 ```
 ERROR: Malformed message received
 ```
-
 **Server output**:
 ```
 TYPE: AUTH
@@ -373,22 +273,18 @@ TYPE: ERR
 DISPLAYNAME: l
 CONTENT: Malformed message received
 ```
-
-**Client exit code**: 20 (Malformed message received)
-
+**Client exit code**: 20 (Malformed message received)<br>
 ### Test case 2: Receiving a MSG message in auth state
-**Input file**: TestInputs/auth
-
+**Description**: This tests that the client displays an local error, sends an ERR message and terminates with an exit code upon receiving a MSG message when expecting a REPLY message.<br>
+**Input file**: TestInputs/auth<br>
 **Server commands**:
 ```
 msg ok
 ```
-
 **Client output**:
 ```
 ERROR: Invalid message MSG for state AUTH
 ```
-
 **Server output**:
 ```
 TYPE: AUTH
@@ -399,29 +295,23 @@ TYPE: ERR
 DISPLAYNAME: l
 CONTENT: Invalid message type MSG in state AUTH
 ```
-
-**Client exit code**: 50 (invalid message)
-
+**Client exit code**: 50 (invalid message)<br>
 ### Test case 3: Receiving a REPLY message in open state
-**Input file**: TestInputs/auth
-
+**Description**: This tests almost the same as the previous, receiving a invalid (REPLY) message for the given state (OPEN). The client behaviour should be the same as in the case above.<br>
 **Client commands**:
 ```
 /auth j k l
 ```
-
 **Server commands**:
 ```
 reply ok
 reply ok
 ```
-
 **Client output**:
 ```
-Action Success: ano
+Action Success: ok
 ERROR: Invalid message REPLY for state OPEN
 ```
-
 **Server output**:
 ```
 TYPE: AUTH
@@ -432,17 +322,15 @@ TYPE: ERR
 DISPLAYNAME: l
 CONTENT: Invalid message type REPLY in state OPEN
 ```
-
-**Client exit code**: 50 (invalid message)
-
+**Client exit code**: 50 (invalid message)<br>
 ### Test case 4: Timeout when waiting for a reply
+**Description
 **Input file**: TestInputs/auth<br>
 **Server commands**: None<br>
 **Client output**:
 ```
 ERROR: Timeout when waiting for reply to authentication
 ```
-
 **Client exit code**: 40 (Reply timed out)<br>
 **Server output**:
 ```
@@ -454,15 +342,13 @@ TYPE: ERR
 DISPLAYNAME: l
 CONTENT: Timeout when waiting for reply to authentication
 ```
-
 ### Test case 5: Trying to send too long message
-**Input file**: TestInputs/too_long_msg_tcp
+**Input file**: TestInputs/too_long_msg_tcp<br>
 **Client output**:
 ```
 Action Success: j
 ERROR: Message too long. Truncating to 60000
 ```
-
 **Server output**:
 ```
 TYPE: AUTH
@@ -471,210 +357,25 @@ DISPLAYNAME: l
 SECRET: k
 TYPE: MSG
 DISPLAYNAME: l
-CONTENT: b * 60000
+CONTENT: bbbbbbbbbbbbbbbbbb... // 60000 times
 TYPE: BYE
 DISPLAYNAME: l
 ```
-**Client exit code**: 0
-
+**Client exit code**: 0<br>
 ### Captured pcap files from the reference server
-### Capture 1: Short conversation
-**Description**: This capture shows a client authenticating successfully, sending a message and logging out.<br>
-**Equivalent pcap file**: Pcaps/TCP/short_server_convo.pcapng<br>
-**Image**: ![TCP short convo](/Screenshots/tcp_short.png)
-
-### Capture 2: Long conversation
+### Short conversation
+**Description**: This capture shows a client authenticating successfully, sending a message and disconnecting.<br>
+**Equivalent pcap file**: *Pcaps/TCP/short_server_convo.pcapng*<br>
+**Image**: ![TCP short convo](/Screenshots/tcp_short.png)<br>
+### Long conversation
 **Description**: This capture shows a client first disconnecting while in start, then connecting and authenticating, then writing a message and receiving some messages from other users, then joining a channel, renaming and listening for a while, then rejoining the default channel and disconnecting.<br>
-**Equivalent pcap file**: Pcaps/TCP/long_server_convo.pcapng<br>
-**Image**: ![TCP long convo](/Screenshots/tcp_long.png)
-
+**Equivalent pcap file**: *Pcaps/TCP/long_server_convo.pcapng*<br>
+**Image**: ![TCP long convo](/Screenshots/tcp_long.png)<br>
 ### UDP testing
-For this variant, it's run the same as the TCP one except we are using `UDP/UDPServer.py`. The cases are also mostly equivalent, except this cariant contains some extra cases which deal with confirmation timeouts and retransmissions.
-
+For this variant, it's run the same as the TCP one except we are using `UDP/UDPServer.py`. The server is run with the `-delay [ms]` or `-errbye-delay [ms]` argument in some cases to test retransmissions. Also in some cases, it was tested on the reference server (a screenshot is included instead of a server command in such cases).<br>
 ### Functionality
-### Test case 1: Successful authentication
-**Input file**: TestInputs/auth<br>
-**Server commands**:
-```
-reply ano
-```
-**Client output**:
-```
-Action Success: ano
-```
-**Server output**:
-```
-TYPE: AUTH
-ID: 0
-USERNAME: j
-DISPLAYNAME: l
-SECRET: k
-TYPE: CONFIRM
-REFID: 0
-TYPE: BYE
-ID: 1
-DISPLAYNAME: l
-```
-
-### Test case 2: Unsuccessful authentication
-**Input file**: TestInputs/auth<br>
-**Server commands**:
-```
-reply! ne
-```
-**Client output**:
-```
-Action Failure: ne
-```
-**Server output**:
-```
-TYPE: AUTH
-ID: 0
-USERNAME: j
-DISPLAYNAME: l
-SECRET: k
-TYPE: CONFIRM
-REFID: 0
-TYPE: BYE
-ID: 1
-DISPLAYNAME: l
-```
-
-### Test case 3: Sending a message
-**Input file**: TestInputs/one_message
-
-**Server commands**:
-```
-reply ok
-```
-
-**Client output**:
-```
-Action Success: ok
-```
-
-**Server output**:
-```
-TYPE: AUTH
-ID: 0
-USERNAME: j
-DISPLAYNAME: l
-SECRET: k
-TYPE: CONFIRM
-REFID: 0
-TYPE: MSG
-ID: 1
-DISPLAYNAME: l
-CONTENT: ahoj server!
-TYPE: BYE
-ID: 2
-DISPLAYNAME: l
-```
-
-### Test case 4: Joining a channel and then sending a message
-**Input file**: TestInputs/join<br>
-**Server commands**:
-```
-reply ano
-reply ano
-```
-**Client output**:
-```
-Action Success: ano
-Action Success: ano
-```
-**Server output**:
-```
-TYPE: AUTH
-ID: 0
-USERNAME: a
-DISPLAYNAME: c
-SECRET: b
-TYPE: CONFIRM
-REFID: 0
-TYPE: JOIN
-ID: 1
-DISPLAYNAME: c
-TYPE: CONFIRM
-REFID: 1
-TYPE: MSG
-ID: 2
-DISPLAYNAME: c
-CONTENT: toto je sprava do superkanalu!
-TYPE: BYE
-ID: 3
-DISPLAYNAME: c
-```
-
-### Test case 5: Renaming and then sending a message
-**Input file**: TestInputs/rename<br>
-**Server commands**:
-```
-reply ok
-```
-**Client output**:
-```
-Action Success: ok
-```
-**Server output**:
-```
-TYPE: AUTH
-ID: 0
-USERNAME: ahoj
-DISPLAYNAME: ahoooj
-SECRET: ahooj
-TYPE: CONFIRM
-REFID: 0
-TYPE: MSG
-ID: 1
-DISPLAYNAME: nove_meno
-CONTENT: premenovana sprava
-TYPE: BYE
-ID: 2
-DISPLAYNAME: nove_meno
-```
-
-### Test case 6: Sending a message and receiving one from the server
-**Client commands**:
-```
-/auth j k l
-ahoj server!
-// press CTRL + C
-```
-
-**Server commands**:
-```
-reply ano
-msg ahoj klient!
-```
-
-**Client output**:
-```
-Action Success: ano
-SERVER: ahoj klient!
-```
-
-**Server output**:
-```
-TYPE: AUTH
-ID: 0
-USERNAME: j
-DISPLAYNAME: l
-SECRET: k
-TYPE: CONFIRM
-REFID: 0
-TYPE: MSG
-ID: 1
-DISPLAYNAME: l
-CONTENT: ahoj server!
-TYPE: CONFIRM
-REFID: 1
-TYPE: BYE
-ID: 2
-DISPLAYNAME: l
-```
-
-### Test case 7: Exchanging messages with the server, then switching channel, renaming and exchanging some more
+### Test case 1: Exchanging messages with the server, then switching channel, renaming and exchanging some more
+**Description**: The equivalent of test case 1 of the TCP variant. Tests basic client functionality.<br>
 **Client commands**:
 ```
 /auth j k l
@@ -686,7 +387,6 @@ idem do ineho kanalu
 uz sa volam klient!
 // Press CTRL + C
 ```
-
 **Server commands**:
 ```
 reply ok
@@ -695,7 +395,6 @@ msg ako sa mas?
 reply ano
 msg jupi maj sa!
 ```
-
 **Client output**:
 ```
 Action Success: ok
@@ -704,7 +403,6 @@ SERVER: ako sa mas?
 Action Success: ano
 SERVER: jupi maj sa!
 ```
-
 **Server output**:
 ```
 TYPE: AUTH
@@ -750,7 +448,110 @@ TYPE: BYE
 ID: 6
 DISPLAYNAME: klient
 ```
-
+### Test case 2: Receiving a CONFIRM on the second retransmission
+**Description**: This tests that the client correctly retransmits a message upon not receiving a CONFIRM in time.<br>
+**Server arguments**: `-delay 400`<br
+**Server commands**:
+```
+reply ok
+```
+**Client comands**:
+```
+/auth j k l
+ahoj server!
+// Press CTRL + C
+```
+**Client output**:
+```
+Action Success: ok
+```
+**Server output**:
+```
+TYPE: AUTH
+ID: 0
+USERNAME: j
+DISPLAYNAME: l
+SECRET: k
+TYPE: CONFIRM
+REFID: 0
+TYPE: MSG
+ID: 1
+DISPLAYNAME: l
+CONTENT: ahoj server!
+TYPE: MSG
+ID: 1
+DISPLAYNAME: l
+CONTENT: ahoj server!
+TYPE: BYE
+ID: 2
+DISPLAYNAME: l
+TYPE: BYE
+ID: 2
+DISPLAYNAME: l
+```
+### Test case 3: Receiving a duplicate message
+**Description**: Tests that upon receiving a duplicate message, the client sends a confirm and nothing else.<br>
+**Server commands**:
+```
+reply ok
+msg ahoj
+duplicate
+```
+**Client commands**:
+```
+/auth j k l
+// Press CTRL + C
+```
+**Client output**:
+```
+Action Success: ok
+server: ahoj
+```
+**Server output**:
+```
+TYPE: AUTH
+ID: 0
+USERNAME: j
+DISPLAYNAME: l
+SECRET: k
+reply ok
+TYPE: CONFIRM
+REFID: 0
+msg ahoj
+TYPE: CONFIRM
+REFID: 1
+TYPE: CONFIRM
+REFID: 1
+TYPE: BYE
+ID: 1
+DISPLAYNAME: l
+```
+### Test case 4: Receiving a BYE message retransmission
+**Description**: This case tests that the client correctly waits for a possible BYE message retransmission before terminating.<br>
+**Server arguments**: `-errbye-delay 100`<br>
+**Server commands**:
+```
+reply ok
+bye
+```
+**Client output**:
+```
+Action Success: ok
+```
+**Server output**:
+```
+TYPE: AUTH
+ID: 0
+USERNAME: j
+DISPLAYNAME: l
+SECRET: k
+TYPE: CONFIRM
+REFID: 0
+TYPE: CONFIRM
+REFID: 1
+TYPE: CONFIRM
+REFID: 1
+```
 ### Testing invalid cases
 ### Test case 1: Receiving a malformed message from the server
 **Input file**: TestInputs/auth
@@ -780,10 +581,6 @@ ID: 1
 DISPLAYNAME: l
 CONTENT: Malformed message received
 ```
-
-*Note: The client tried to pick up the message id from the given message and it sent a CONFIRM containing it, hence the weird value*
-
-
 ### Test case 2: Receiving a MSG message in auth state
 **Input file**: TestInputs/auth
 
@@ -811,29 +608,22 @@ ID: 1
 DISPLAYNAME: l
 CONTENT: Invalid message type MSG in state AUTH
 ```
-
-**Client exit code**: 50 (invalid message)
-
+**Client exit code**: 50 (invalid message)<br>
 ### Test case 3: Receiving a REPLY message in open state
-**Input file**: TestInputs/auth
-
 **Client commands**:
 ```
 /auth j k l
 ```
-
 **Server commands**:
 ```
 reply ok
 reply ok
 ```
-
 **Client output**:
 ```
 Action Success: ok
 ERROR: Malformed message received
 ```
-
 **Server output**:
 ```
 TYPE: AUTH
@@ -853,35 +643,31 @@ TYPE: ERR
 ID: 1
 DISPLAYNAME: l
 ```
-
-**Client exit code**: 20 (malformed message) - this code happens due to the UDP variant treating reply messages with invalid message ID's as malformed
-
+**Client exit code**: 20 (malformed message) - this code happens due to the UDP variant treating reply messages with invalid message ID's as malformed.<br>
 ### Test case 4: Timeout when waiting for a reply
-**Input file**: TestInputs/auth<br>
-**Server commands**: None<br>
+**Description**: This tests that the client sends a ERR message and terminates with an exit code if a REPLY is not received in time. For the UDP variant, this was tested on the reference server behind NAT (to ensure no response other than CONFIRM). I wasn't initially sure whether to send ERR in such a state since the connection doesn't yet exist (the same for BYE in the start state) but since the server normally responds with a CONFIRM it seemed like the best option.<br>
+**Client commands**:
+```
+/auth xlackoi00 my-very-secret-token-which-is-visible-from-the-screenshot-anyway udp_ahoj
+```
 **Client output**:
 ```
 ERROR: Timeout when waiting for reply to authentication
 ```
-
 **Client exit code**: 40 (Reply timed out)<br>
-**Server output**:
-```
-TYPE: AUTH
-ID: 0
-USERNAME: j
-DISPLAYNAME: l
-SECRET: k
-```
-
+**Screenshot**: ![UDP REPLY timeout](/Screenshots/udp_reply_auth_timeout.png)<br>
 ### Test case 5: Trying to send too long message
-**Input file**: TestInputs/too_long_msg_udp
+**Description**: This tests that the client correctly truncates a message content that is too long for the appropriate variant. Since i considered the ethernet MTU (1500) as the maximum size of one message (since one message, one datagram), i considered the maximum size of the message content parameter as `1500 - (type(1) + ID(2) + MAX_DNAME(20) + 2 * TRAILING_ZERO(1))` = 1475<br>
+**Input file**: TestInputs/too_long_msg_udp<br>
+**Server commands**:
+```
+reply j
+```
 **Client output**:
 ```
 Action Success: j
 ERROR: Message too long. Truncating to 1475
 ```
-
 **Server output**:
 ```
 TYPE: AUTH
@@ -894,14 +680,46 @@ REFID: 0
 TYPE: MSG
 ID: 1
 DISPLAYNAME: l
-CONTENT: b * 1475
+CONTENT: bbbbbbbbbbb... // 1475 times
 TYPE: BYE
 ID: 2
 DISPLAYNAME: l
 ```
-**Client exit code**: 0
+**Client exit code**: 0<br>
+### Test case 6: Timeout when waiting for AUTH confirmation
+**Description**: This case tests that the client terminates with an error code upon not receiving confirm for the initial AUTH message. <br>
+**Client commands**:
+```
+/auth j k l
+```
+**Server commands**:
+```
+nonconfirmnext
+```
+**Client output**:
+```
+ERROR: Message did not receive a CONFIRM in time!
+```
+**Server output**:
+```
+TYPE: AUTH
+ID: 0
+USERNAME: j
+DISPLAYNAME: l
+SECRET: k
+```
+**Client exit code**: 30 (CONFIRM timeout)
 
-### Testing invalid cases
+### Captured pcap files from the reference server
+### Short conversation
+**Description**: This capture shows a client authenticating unsuccessfully (because he forgot he didn't turn on the VPN), then successfully, then sending a message, receiving some messages from the server and disconnecting.<br>
+**Equivalent pcap file**: *Pcaps/UDP/long_server_convo.pcapng*<br>
+**Image**: ![UDP short convo](/Screenshots/udp_short.png)
+
+### Long conversation
+**Description**: This capture shows a client authenticating, then sending a message and receiving some messages, then joining a different channel and renaming, then joining the default channel again and receiving some messages and disconnecting.<br>
+**Equivalent pcap file**: *Pcaps/UDP/long_server_convo.pcapng*<br>
+**Image**: ![UDP long convo](/Screenshots/udp_long.png)
 
 ## Bibliography
 [RFC9293] Eddy, W. *Transmission Control Protocol (TCP)* [online]. August 2022. [cited 2025-04-14]. DOI: 10.17487/RFC9293. Avaliable at: https://datatracker.ietf.org/doc/html/rfc9293#name-introduction<br>
