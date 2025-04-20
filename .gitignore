@@ -488,3 +488,7 @@ $RECYCLE.BIN/
 
 # Notes and sources
 *.txt
+
+# Submission and sln
+*.zip
+*.sln

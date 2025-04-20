@@ -4,9 +4,6 @@
 # Final executable
 EXECUTABLE=ipk25chat-client
 
-# .csproj file
-PROJECT=IPK25-CHAT/IPK_25_CHAT.csproj
-
 .PHONY: all run build clean
 
 # Flags for dotnet publish
@@ -15,10 +12,10 @@ FLAGS=-c Release --use-current-runtime -p:PublishSingleFile=true -p:AssemblyName
 all: build
 
 build:
-	dotnet publish $(PROJECT) $(FLAGS) -o .
+	dotnet publish $(FLAGS) -o .
 
 run: 
-	dotnet run --project $(PROJECT)
+	dotnet run
 
 clean:
 	rm -f $(EXECUTABLE) && cd IPK25-CHAT && rm -rf bin obj
