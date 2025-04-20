@@ -56,7 +56,7 @@ This program was implemented in the C# programming language. Other tools used du
     **1. Netcat**: Used as a mock server for testing and debugging (mainly for the TCP variant).<br>
     **2. Wireshark**: Used for testing and debbuging and for capturing pcaps into the documentation.<br>
     **3. AI tools (ChatGPT/Github Copilot)**: Used for debugging, explaining how some specific C# features work (events used in the **UserInputReader** and **IServerCommunicator** and it's subclasses, or how do cancellation tokens work and throw exceptions), helping generate boilerplate/repetitive comments (e.g. XML documentation for instance attributes or methods that repeat during multiple classes, like message types with the same parameters or comments for repeated code in their parsing methods, or comments for overriden methods that have similiar structure/repeated code in general). Also helped generate the code of the testing mock servers (found in the *Servers/* folder).<br>
-    **4. Lucidchart**: Diagramming tool used to create the UML diagrams found in the *UML/* folder (and this documentation).<br>
+    **4. Lucidchart**: Diagramming tool used to create the UML diagrams found in the *Doc/UML/* folder (and this documentation).<br>
     **5. Reference tools**: The wireshark dissector plugin for the IPK25CHAT protocol and the reference server.
 
 ## Program usage 
@@ -143,7 +143,7 @@ The only non-shared feature in the TCP variant is the **TCPServerCommunicator**.
 In addition to the **UDPServerCommunicator** as the unique feature, the **UDPClient** class also overrides some methods from the superclass, concretely the parts where user input is processed and a message is sent, since the client has to get a confirmation. In case it doesn't, the **OnMessageTimeout** method is invoked, which ends the program with an error code. When it comes to the communication with the server, the **UDPServerCommunicator** utilizes a connected UDP socket. At first, when sending the initial AUTH message, the socket is unconnected. For this period, `SendToAsync()` and `ReceiveFromAsync()` are used for communication. Each incoming datagram's sender IP address is then inspected, and if it does not match the server's, the datagram is dropped. When the server sends a datagram to the client from the allocated port, the communicator calls `Connect()` and maintains this connection for the rest of the program run. This allows the communicator to call methods like `ReceiveAsync()` and `SendAsync()` and not worry about where the datagrams may come from or arrive at. An issue the communicator has to solve is message confirmation. For this, it keeps a dictionary of sent messages. The key is their ID and the value is a **MessageStateInformation** structure. This structure contains a task completion source which is set to true when the message is confirmed, and it's task, which is awaited until the message is confirmed (or it times out). Confirm messages that are referencing an already sent message are ignored, and confirm or reply messages that have invalid ref message ID's are treated as malformed. On a message confirmation timeout, a **ConfirmTimeouted** event is invoked, leading to the client terminating the program. Incoming datagrams are processed by calling `Message.Parse()` which calls the parsing method for each message type and returns the result (or a **MalformedMessage** object). Then the communicator either invokes the **MessageReceived** event, or just sends a confirm (in the case of a PING message) or sets a task waiting for confirmation to completed (in the case of a CONFIRM message).
 
 ## Testing
-This section shows some scenarios which the program was tested on, manually and with input piped from a file (found in the TestInputs/). In general, testing for both variants can be split into 3 parts --> functionality (e.g. sending and receiving messages and some variant-specific cases, invalid cases, where the client is supposed to either terminate with a error code or show a local error (these are mostly identical for both variants, except some variant specific cases), and the third part shows some captured pcaps (found in the *Pcaps/* folder) which display communication on the reference server. Each of the variants has one pcap file displaying a short conversation (auth, message and bye) and a longer one with renaming and joining channels. For each variant a mock server was used for testing: found in the *Server/* folder. The servers support the following commands:<br>
+This section shows some scenarios which the program was tested on, manually and with input piped from a file (found in the TestInputs/). In general, testing for both variants can be split into 3 parts --> functionality (e.g. sending and receiving messages and some variant-specific cases, invalid cases, where the client is supposed to either terminate with a error code or show a local error (these are mostly identical for both variants, except some variant specific cases), and the third part shows some captured pcaps (found in the *Doc/Pcaps/* folder) which display communication on the reference server. Each of the variants has one pcap file displaying a short conversation (auth, message and bye) and a longer one with renaming and joining channels. For each variant a mock server was used for testing: found in the *Server/* folder. The servers support the following commands:<br>
 | Command                | Supported by | Effect                                                                                                             |
 | ---------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------ |
 | msg [CONTENT]          | Both servers | Sends a MSG message with the given [CONTENT]                                                                       |
@@ -348,7 +348,7 @@ CONTENT: Invalid message type REPLY in state OPEN
 ```
 **Client exit code**: 50 (invalid message)<br>
 ### Test case 4: Timeout when waiting for a reply
-**Description**: This tests that the client sends an ERR message and terminates with an exit code if he does not receive a reply message in time.
+**Description**: This tests that the client sends an ERR message and terminates with an exit code if he does not receive a reply message in time.<br>
 **Input file**: TestInputs/auth<br>
 **Server commands**: None<br>
 **Client output**:
@@ -367,7 +367,7 @@ DISPLAYNAME: l
 CONTENT: Timeout when waiting for reply to authentication
 ```
 ### Test case 5: Trying to send too long message
-**Description**: This tests that the client truncates message contents longer than the max value (60000 for TCP), prints a local error and sends the truncated message.
+**Description**: This tests that the client truncates message contents longer than the max value (60000 for TCP), prints a local error and sends the truncated message.<br>
 **Input file**: TestInputs/too_long_msg_tcp<br>
 **Client output**:
 ```
@@ -390,11 +390,11 @@ DISPLAYNAME: l
 ### Captured pcap files from the reference server
 ### Short conversation
 **Description**: This capture shows a client authenticating successfully, sending a message and disconnecting.<br>
-**Equivalent pcap file**: *Pcaps/TCP/short_server_convo.pcapng*<br>
+**Equivalent pcap file**: *Doc/Pcaps/TCP/short_server_convo.pcapng*<br>
 **Image**: ![TCP short convo](/Doc/Screenshots/tcp_short.png)<br>
 ### Long conversation
 **Description**: This capture shows a client first disconnecting while in start, then connecting and authenticating, then writing a message and receiving some messages from other users, then joining a channel, renaming and listening for a while, then rejoining the default channel and disconnecting.<br>
-**Equivalent pcap file**: *Pcaps/TCP/long_server_convo.pcapng*<br>
+**Equivalent pcap file**: *Doc/Pcaps/TCP/long_server_convo.pcapng*<br>
 **Image**: ![TCP long convo](/Doc/Screenshots/tcp_long.png)<br>
 ### UDP testing
 For this variant, it's run the same as the TCP one except we are using `UDP/UDPServer.py`. The server is run with the `-delay [ms]` or `-errbye-delay [ms]` argument in some cases to test retransmissions. Also in some cases, it was tested on the reference server (a screenshot is included instead of a server command in such cases).<br>
@@ -631,7 +631,7 @@ CONTENT: Invalid message type MSG in state AUTH
 ```
 **Client exit code**: 50 (invalid message)<br>
 ### Test case 3: Receiving a REPLY message in open state
-**Description**: Tests basically the same as the above case, except a different message (REPLY) in a different state (open).
+**Description**: Tests basically the same as the above case, except a different message (REPLY) in a different state (open).<br>
 **Client commands**:
 ```
 /auth j k l
@@ -678,6 +678,7 @@ ERROR: Timeout when waiting for reply to authentication
 ```
 **Client exit code**: 40 (Reply timed out)<br>
 **Screenshot**: ![UDP REPLY timeout](/Doc/Screenshots/udp_reply_auth_timeout.png)<br>
+**Equivalent pcap file**: *Doc/Pcaps/UDP/auth_timeou.pcapng*<br>
 ### Test case 5: Trying to send too long message
 **Description**: This tests that the client correctly truncates a message content that is too long for the appropriate variant. Since i considered the ethernet MTU (1500) as the maximum size of one message (since one message, one datagram), i considered the maximum size of the message content parameter as `1500 - (type(1) + ID(2) + MAX_DNAME(20) + 2 * TRAILING_ZERO(1))` = 1475<br>
 **Input file**: TestInputs/too_long_msg_udp<br>
@@ -735,12 +736,12 @@ SECRET: k
 ### Captured pcap files from the reference server
 ### Short conversation
 **Description**: This capture shows a client authenticating unsuccessfully (because he forgot he didn't turn on the VPN), then successfully, then sending a message, receiving some messages from the server and disconnecting.<br>
-**Equivalent pcap file**: *Pcaps/UDP/long_server_convo.pcapng*<br>
+**Equivalent pcap file**: *Doc/Pcaps/UDP/long_server_convo.pcapng*<br>
 **Image**: ![UDP short convo](/Doc/Screenshots/udp_short.png)
 
 ### Long conversation
 **Description**: This capture shows a client authenticating, then sending a message and receiving some messages, then joining a different channel and renaming, then joining the default channel again and receiving some messages and disconnecting.<br>
-**Equivalent pcap file**: *Pcaps/UDP/long_server_convo.pcapng*<br>
+**Equivalent pcap file**: *Doc/Pcaps/UDP/long_server_convo.pcapng*<br>
 **Image**: ![UDP long convo](/Doc/Screenshots/udp_long.png)
 
 ## Bibliography
