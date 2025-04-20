@@ -39,8 +39,8 @@ Faculty of Information Technology.
 6. [Bibliography](#bibliography)
 ## Theoretical overview
 ### Sockets
-Sockets are one endpoint in a two way internet communication, defined by an IP address and a port number [[Geeksforgeeks]](#bibliography). In case of connected/stream sockets they also have an destination IP address and port associated with them. These are sockets that provide reliable in order byte streams for data transmission [[IBM]](#bibliography). Along with stream sockets, other important type is the datagram socket, which acts more like a mailbox [[Geeksforgeeks]](#bibliography) and provides datagrams instead of streams, which are connectionless messages with fixed message length and do not guarantee the order or delivery of messages [[IBM]](#bibliography). The TCP uses stream sockets, while the UDP uses datagram sockets.
-
+Sockets are one endpoint in a two way internet communication, defined by an IP address and a port number [[Geeksforgeeks]](#bibliography). In case of connected/stream sockets they also have an destination IP address and port associated with them. These are sockets that provide reliable in order byte streams for data transmission [[IBM]](#bibliography). Along with stream sockets, other important type is the datagram socket, which acts more like a mailbox, providing datagrams (that are "dropped" into it and sent from it to another mailbox) instead of streams, which are connectionless messages with fixed message length and do not guarantee the order or delivery of messages [[IBM]](#bibliography), [[Geeksforgeeks]](#bibliography). The TCP uses stream sockets, while the UDP uses datagram sockets.
+***
 ### Transmission Control Protocol (TCP)
 The TCP is a transport layer protocol which is well characterized by reliable delivery of data (being able to solve problems such as packet loss), being connection-oriented, and providing a in-order byte stream [[RFC9293]](#bibliography). Because of these features, the TCP is commonly utilized in applications that require reliable data transfer, web browsing, email or file transfer [[Techtarget]](#bibliography). However, the reliablility guarantees can introduce significant overhead, which is why the TCP isn't suitable for all use cases. Because of the reliability of TCP, in context of this project the only problem to be solved for the client is detecting message delimiters.  The TCP is most recently specified in [[RFC9293]](#bibliography).
 ***
@@ -81,7 +81,7 @@ and third part describe the parts which are unique respectively for the TCP and 
 The two variants share most of their behaviour. The main difference is how they communicate with the server. However
 user input processing, FSM logic, classes for commands/messages are the same for both variants, and server input validation 
 according to the current state is mutual for both variants. On a high level, the behaviour of the client is described by the following 
-diagram:<br><br> ![Client overview](/UML/IPK-SUMMARY.png)<br><br>
+diagram:<br><br> ![Client overview](/Doc/UML/IPK-SUMMARY.png)<br><br>
 *Note: In this class diagram (and the following  class diagrams), interfaces are displayed as green, abstract classes as pink, normal classes as blue and structs as red.*<br>
 The two variants also share the same exit codes. These are:<br>
 
@@ -111,7 +111,7 @@ input to the **UserInputQueue** class. When the client is ready to process the n
 The queue is internally guarded by a semaphore, which is released once for each enqueued input, ensuring only valid access.
 When the client is ready to process the next user input, it calls the `Dequeue()` method which waits on the semaphore until user input is avaliable.
 After getting an input, **UserInputValidator** is run by the client to verify whether the user input is acceptable in the current state.
-A variant of this process with a single mesage is visualized by the following sequence diagram:<br><br>![User input processing](/UML/Sequence.png)<br><br>
+A variant of this process with a single mesage is visualized by the following sequence diagram:<br><br>![User input processing](/Doc/UML/Sequence.png)<br><br>
 *Note: Since user input is to be buffered until the client can process it, the user pressing CTRL + C/D is equivalent to enqueuing null. Upon processing all previous user inputs and requesting the next one, null is dequeued, upon which the client invokes the OnEofReceived method.*<br>
 
 #### Processing messages with the server
@@ -124,7 +124,7 @@ at the current client state. Similiar logic is utilized when processing server i
 method indicating if it is valid in the current state. 
 
 #### Message and Command classes and their types
-The following diagram shows more in depth how messages and commands are represented in the program:<br><br>![IReadable diagram](/UML/IReadable.png)<br><br>
+The following diagram shows more in depth how messages and commands are represented in the program:<br><br>![IReadable diagram](/Doc/UML/IReadable.png)<br><br>
 Each message/command type has it's own subclass. In addition to the before mentioned validation method, each type has it's own parameters. Messages that can be sent from
 the client also have impelementations of `ToString()` and `AsBytes()` methods, which convert the message to a format suitable for sending to the server in the given protocol.
 Messages that can be received from the server also have either a regular expression (TCP) or a parsing method (UDP) which is used to identify incoming messages from the server.
@@ -132,13 +132,13 @@ The **MalformedMessage** type is used to represent messages that don't fit into 
 
 ### The TCP variant
 #### Class diagram for this variant
-![TCPServerCommunicator](/UML/TCPCommunicator.png)
+![TCPServerCommunicator](/Doc/UML/TCPCommunicator.png)
 #### Description of the unique features of this variant
 The only non-shared feature in the TCP variant is the **TCPServerCommunicator**. It works by running in a loop until it's cancellation token source is cancelled. It utilizes **StreamReader** and **StreamWriter** to comfortably read and write messages in a textual form from the server. The `GetMessage()` method is used to receive messages, which works by reading one char at a time from the server (into a buffer of size one) until the last two characters received are `\r\n` (CRLF). This approach may be slower than reading more at once, but seemed like the least error-prone and safest option. Upon reaching CRLF, the method returns the received string to the main loop which calls `Message.Parse()`, which tries to parse the message using regular expressions for each message type. If it fails to do so, it returns a **MalformedMessage** object, upon which the client reacts by terminating the connection.
 
 ### The UDP variant
 #### Class diagram for this variant
-![UDPServerCommunicator](/UML/UDPCommunicator.png)
+![UDPServerCommunicator](/Doc/UML/UDPCommunicator.png)
 #### Description of the unique features of this variant
 In addition to the **UDPServerCommunicator** as the unique feature, the **UDPClient** class also overrides some methods from the superclass, concretely the parts where user input is processed and a message is sent, since the client has to get a confirmation. In case it doesn't, the **OnMessageTimeout** method is invoked, which ends the program with an error code. When it comes to the communication with the server, the **UDPServerCommunicator** utilizes a connected UDP socket. At first, when sending the initial AUTH message, the socket is unconnected. For this period, `SendToAsync()` and `ReceiveFromAsync()` are used for communication. Each incoming datagram's sender IP address is then inspected, and if it does not match the server's, the datagram is dropped. When the server sends a datagram to the client from the allocated port, the communicator calls `Connect()` and maintains this connection for the rest of the program run. This allows the communicator to call methods like `ReceiveAsync()` and `SendAsync()` and not worry about where the datagrams may come from or arrive at. An issue the communicator has to solve is message confirmation. For this, it keeps a dictionary of sent messages. The key is their ID and the value is a **MessageStateInformation** structure. This structure contains a task completion source which is set to true when the message is confirmed, and it's task, which is awaited until the message is confirmed (or it times out). Confirm messages that are referencing an already sent message are ignored, and confirm or reply messages that have invalid ref message ID's are treated as malformed. On a message confirmation timeout, a **ConfirmTimeouted** event is invoked, leading to the client terminating the program. Incoming datagrams are processed by calling `Message.Parse()` which calls the parsing method for each message type and returns the result (or a **MalformedMessage** object). Then the communicator either invokes the **MessageReceived** event, or just sends a confirm (in the case of a PING message) or sets a task waiting for confirmation to completed (in the case of a CONFIRM message).
 
@@ -391,11 +391,11 @@ DISPLAYNAME: l
 ### Short conversation
 **Description**: This capture shows a client authenticating successfully, sending a message and disconnecting.<br>
 **Equivalent pcap file**: *Pcaps/TCP/short_server_convo.pcapng*<br>
-**Image**: ![TCP short convo](/Screenshots/tcp_short.png)<br>
+**Image**: ![TCP short convo](/Doc/Screenshots/tcp_short.png)<br>
 ### Long conversation
 **Description**: This capture shows a client first disconnecting while in start, then connecting and authenticating, then writing a message and receiving some messages from other users, then joining a channel, renaming and listening for a while, then rejoining the default channel and disconnecting.<br>
 **Equivalent pcap file**: *Pcaps/TCP/long_server_convo.pcapng*<br>
-**Image**: ![TCP long convo](/Screenshots/tcp_long.png)<br>
+**Image**: ![TCP long convo](/Doc/Screenshots/tcp_long.png)<br>
 ### UDP testing
 For this variant, it's run the same as the TCP one except we are using `UDP/UDPServer.py`. The server is run with the `-delay [ms]` or `-errbye-delay [ms]` argument in some cases to test retransmissions. Also in some cases, it was tested on the reference server (a screenshot is included instead of a server command in such cases).<br>
 ### Functionality testing
@@ -677,7 +677,7 @@ DISPLAYNAME: l
 ERROR: Timeout when waiting for reply to authentication
 ```
 **Client exit code**: 40 (Reply timed out)<br>
-**Screenshot**: ![UDP REPLY timeout](/Screenshots/udp_reply_auth_timeout.png)<br>
+**Screenshot**: ![UDP REPLY timeout](/Doc/Screenshots/udp_reply_auth_timeout.png)<br>
 ### Test case 5: Trying to send too long message
 **Description**: This tests that the client correctly truncates a message content that is too long for the appropriate variant. Since i considered the ethernet MTU (1500) as the maximum size of one message (since one message, one datagram), i considered the maximum size of the message content parameter as `1500 - (type(1) + ID(2) + MAX_DNAME(20) + 2 * TRAILING_ZERO(1))` = 1475<br>
 **Input file**: TestInputs/too_long_msg_udp<br>
@@ -736,12 +736,12 @@ SECRET: k
 ### Short conversation
 **Description**: This capture shows a client authenticating unsuccessfully (because he forgot he didn't turn on the VPN), then successfully, then sending a message, receiving some messages from the server and disconnecting.<br>
 **Equivalent pcap file**: *Pcaps/UDP/long_server_convo.pcapng*<br>
-**Image**: ![UDP short convo](/Screenshots/udp_short.png)
+**Image**: ![UDP short convo](/Doc/Screenshots/udp_short.png)
 
 ### Long conversation
 **Description**: This capture shows a client authenticating, then sending a message and receiving some messages, then joining a different channel and renaming, then joining the default channel again and receiving some messages and disconnecting.<br>
 **Equivalent pcap file**: *Pcaps/UDP/long_server_convo.pcapng*<br>
-**Image**: ![UDP long convo](/Screenshots/udp_long.png)
+**Image**: ![UDP long convo](/Doc/Screenshots/udp_long.png)
 
 ## Bibliography
 [RFC9293] Eddy, W. *Transmission Control Protocol (TCP)* [online]. August 2022. [cited 2025-04-14]. DOI: 10.17487/RFC9293. Avaliable at: https://datatracker.ietf.org/doc/html/rfc9293#name-introduction<br>

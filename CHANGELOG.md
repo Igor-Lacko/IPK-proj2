@@ -1,0 +1,5 @@
+# Implemented functionality and known limitations
+The client fully implements both the TCP and UDP variants. When it comes to known limitations, i'm not aware of any, however there are some cases where i wasn't 100% sure on the implementation specification, and as such, they may be implemented incorrectly. These include:<br>
+    - **1. Whether to send a BYE in the UDP's start state**: I have opted to send, since the server confirms these messages.<br>
+    - **2. Whether to treat a CONFIRM message which was already received as a malformed or ignore it**: I have decided to ignore, since a transport diagram in the assignment shows a similar situation.<br>
+    - **3. Max size of the message content parameter in the UDP variant**: I have opted for 1475, see *README.md, UDP testing, invalid cases, test case 5* for explanation.
