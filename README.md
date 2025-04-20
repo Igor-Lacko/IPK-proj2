@@ -55,7 +55,7 @@ Connected UDP sockets are UDP sockets that have a full 4 tuple (e.g. source and 
 This program was implemented in the C# programming language. Other tools used during development, testing and documentation are:<br>
     **1. Netcat**: Used as a mock server for testing and debugging (mainly for the TCP variant).<br>
     **2. Wireshark**: Used for testing and debbuging and for capturing pcaps into the documentation.<br>
-    **3. AI tools (ChatGPT/Github Copilot)**: Used for debugging, explaining how some specific C# features work (events used in the **UserInputReader** and **IServerCommunicator** and it's subclasses, or how do cancellation tokens work and throw exceptions), helping generate boilerplate/repetitive comments (e.g. XML documentation for instance attributes or methods that repeat during multiple classes, like message types with the same parameters or comments for repeated code in their parsing methods, or comments for overriden methods that have similiar structure/repeated code in general). Also helped generate the code of the testing mock servers (found in the *Servers/* folder).<br>
+    **3. AI tools (ChatGPT/Github Copilot)**: Used for debugging, explaining how some specific C# features work before using them (events used in the **UserInputReader** and **IServerCommunicator** and it's subclasses, or how do cancellation tokens work and throw exceptions), helping generate boilerplate/repetitive comments (e.g. XML documentation for instance attributes or methods that repeat during multiple classes, like message types with the same parameters or comments for repeated code in their parsing methods, or comments for overriden methods that have similiar structure/repeated code in general). Also helped generate the code of the testing mock servers (found in the *Servers/* folder).<br>
     **4. Lucidchart**: Diagramming tool used to create the UML diagrams found in the *Doc/UML/* folder (and this documentation).<br>
     **5. Reference tools**: The wireshark dissector plugin for the IPK25CHAT protocol and the reference server.
 
@@ -744,6 +744,11 @@ SECRET: k
 **Equivalent pcap file**: *Doc/Pcaps/UDP/long_server_convo.pcapng*<br>
 **Image**: ![UDP long convo](/Doc/Screenshots/udp_long.png)
 
+### Other testing
+Other methods of testing include:<br>
+    - *Netcat*: As a mock server, mainly for TCP<br>
+    - *Student tests*: Tests made by other students, avaliable at [[VUT_IPK_CLIENT_TESTS]](#bibliography)
+
 ## Bibliography
 [RFC9293] Eddy, W. *Transmission Control Protocol (TCP)* [online]. August 2022. [cited 2025-04-14]. DOI: 10.17487/RFC9293. Avaliable at: https://datatracker.ietf.org/doc/html/rfc9293#name-introduction<br>
 [Techtarget] Yasar, K. *Transmission Control Protocol (TCP)* [online]. June 2024. [cited 2025-04-14]. Avaliable at: https://www.techtarget.com/searchnetworking/definition/TCP<br>
@@ -752,4 +757,5 @@ SECRET: k
 [IBM] *CONNECT* [online]. April 2023. [cited 2025-04-15]. Avaliable at: https://www.ibm.com/docs/en/zos/3.1.0?topic=functions-connect<br>
 [RFC768] Postel, J. *User Datagram Protocol* [online]. [cited 2025-04-15]. DOI: 10.17487/RFC0768. Avaliable at: https://datatracker.ietf.org/doc/html/rfc768<br>
 [Geeksforgeeks] *Socket in computer network* [online]. [cited 2025-04-20]. Avaliable at: https://www.geeksforgeeks.org/socket-in-computer-network/<br>
-[IBM] *Socket types* [online]. [cited 2025-04-20]. Avaliable at: https://www.ibm.com/docs/pl/aix/7.1?topic=protocols-socket-types
+[IBM] *Socket types* [online]. [cited 2025-04-20]. Avaliable at: https://www.ibm.com/docs/pl/aix/7.1?topic=protocols-socket-types<br>
+[VUT_IPK_CLIENT_TESTS] Malaschuk, V. and Hobza. T. *VUT_IPK_CLIENT_TESTS* [online]. [cited 2025-04-20]. Avaliable at: https://github.com/Vlad6422/VUT_IPK_CLIENT_TESTS
