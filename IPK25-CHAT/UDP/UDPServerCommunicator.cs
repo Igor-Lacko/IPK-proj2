@@ -99,7 +99,6 @@ public class UDPServerCommunicator : IServerCommunicator
         try
         {
             ServerInputCancellationTokenSource.Cancel();
-            UdpSocket.Shutdown(SocketShutdown.Both);
             UdpSocket.Close();
         }
 
